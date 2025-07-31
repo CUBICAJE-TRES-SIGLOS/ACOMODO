@@ -1,179 +1,202 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8" />
-    <title>Sistema de cubicaje - Comercializadora de Llantas Tres Siglos</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 0; padding: 0;
-            background: url('https://llantas24.com/wp-content/uploads/2024/03/que-utilidad-tienen-las-llantas-de-un-carro.jpg') no-repeat center fixed;
-            background-size: cover;
-        }
-        header {
-            display: flex;
-            align-items: center;
-            background: #b0dab9bb;
-            color: #24412b;
-            padding: 12px 24px;
-        }
-        header img {
-            height: 44px;
-            margin-right: 12px;
-            opacity: 0.7;
-        }
-        nav {
-            display: flex;
-            background: #b0dab9e6;
-        }
-        nav button {
-            flex: 1;
-            padding: 12px 0;
-            color: #24412b;
-            background: transparent;
-            border: none;
-            cursor: pointer;
-            font-weight: bold;
-            letter-spacing: 1px;
-            transition: background 0.3s;
-        }
-        nav button:hover, nav button.active {
-            background: #d9efe0;
-        }
-        section {
-            background: rgba(255,255,255,0.88);
-            border-radius: 16px;
-            margin: 32px auto 16px auto;
-            max-width: 1200px;
-            box-shadow: 0 8px 32px rgba(72,144,81,0.13);
-            padding: 28px 22px;
-        }
-        .tabcontent {
-            display: none;
-            background: transparent;
-        }
-        .tabcontent.active {
-            display: block;
-        }
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 12px;
-            background: white;
-            border-radius: 8px;
-            overflow: hidden;
-        }
-        th, td {
-            border: 1px solid #e2e2e2;
-            padding: 8px 12px;
-            text-align: center;
-        }
-        th {
-            background: #f7fcf8;
-        }
-        .search-bar {
-            margin-top: 8px;
-            margin-bottom: 12px;
-            padding: 7px;
-            font-size: 17px;
-            border-radius: 5px;
-            border: 1px solid #cde5d4;
-            flex-grow: 1;
-        }
-        button.primary {
-            background: #489051;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            padding: 8px 18px;
-            font-weight: bold;
-            margin-top: 0;
-            transition: background 0.3s;
-            white-space: nowrap;
-        }
-        button.primary:hover {
-            background: #75c286;
-        }
-        .highlight-yellow {
-            background-color: #fffa8b;
-            transition: background-color 1s;
-        }
-        .graph-container {
-            width: 45%;
-            background: #f5fdf7;
-            padding: 16px;
-            border-radius: 14px;
-            border: 1px solid #e2e2e2;
-            margin: 8px 5px 16px 0;
-            display: inline-block;
-            vertical-align: top;
-            box-shadow: 0 3px 12px #d6eedd83;
-        }
-        @media (max-width: 900px){
-            .graph-container{ width: 95%; margin:auto; margin-bottom:16px;}
-        }
-        .search-and-button {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            margin-bottom: 12px;
-            max-width: 700px;
-            flex-wrap: wrap;
-        }
-        /* Formulario compacto para agregar */
-        form.add-form {
-            background: #eaf7e9;
-            border: 1px solid #aac7a4;
-            border-radius: 12px;
-            padding: 15px;
-            margin-top: 20px;
-            max-width: 700px;
-            box-shadow: 0 3px 10px #a3d0a083;
-            display: none; /* oculto por defecto */
-        }
-        form.add-form label {
-            display: block;
-            margin: 6px 0 3px 0;
-            font-weight: bold;
-            color: #35672b;
-        }
-        form.add-form input[type=text], form.add-form input[type=number] {
-            width: 100%;
-            padding: 6px 10px;
-            border: 1px solid #a3d087;
-            border-radius: 6px;
-            box-sizing: border-box;
-            margin-bottom: 8px;
-            font-size: 15px;
-            color: #24412b;
-        }
-        form.add-form button.submit-btn {
-            margin-top: 4px;
-            padding: 8px 18px;
-            background: #489051;
-            color: white;
-            border: none;
-            font-weight: bold;
-            border-radius: 6px;
-            cursor: pointer;
-            transition: background 0.3s;
-        }
-        form.add-form button.submit-btn:hover {
-            background: #75c286;
-        }
-        .msg {
-            margin: 6px 0 0 0;
-            font-size: 14px;
-            min-height: 18px;
-        }
-        .msg.success {
-            color: green;
-        }
-        .msg.error {
-            color: red;
-        }
-    </style>
+<meta charset="UTF-8" />
+<title>Sistema de cubicaje - Comercializadora de Llantas Tres Siglos</title>
+<style>
+    body {
+        font-family: Arial, sans-serif;
+        margin: 0; padding: 0;
+        background: url('https://llantas24.com/wp-content/uploads/2024/03/que-utilidad-tienen-las-llantas-de-un-carro.jpg') no-repeat center fixed;
+        background-size: cover;
+    }
+    header {
+        display: flex;
+        align-items: center;
+        background: #b0dab9bb;
+        color: #24412b;
+        padding: 12px 24px;
+    }
+    header img {
+        height: 44px;
+        margin-right: 12px;
+        opacity: 0.7;
+    }
+    nav {
+        display: flex;
+        background: #b0dab9e6;
+    }
+    nav button {
+        flex: 1;
+        padding: 12px 0;
+        color: #24412b;
+        background: transparent;
+        border: none;
+        cursor: pointer;
+        font-weight: bold;
+        letter-spacing: 1px;
+        transition: background 0.3s;
+    }
+    nav button:hover, nav button.active {
+        background: #d9efe0;
+    }
+    section {
+        background: rgba(255,255,255,0.88);
+        border-radius: 16px;
+        margin: 32px auto 16px auto;
+        max-width: 1200px;
+        box-shadow: 0 8px 32px rgba(72,144,81,0.13);
+        padding: 28px 22px;
+    }
+    .tabcontent {
+        display: none;
+        background: transparent;
+    }
+    .tabcontent.active {
+        display: block;
+    }
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 12px;
+        background: white;
+        border-radius: 8px;
+        overflow: hidden;
+    }
+    th, td {
+        border: 1px solid #e2e2e2;
+        padding: 8px 12px;
+        text-align: center;
+    }
+    th {
+        background: #f7fcf8;
+    }
+    .search-bar {
+        margin-top: 8px;
+        margin-bottom: 12px;
+        padding: 7px;
+        font-size: 17px;
+        border-radius: 5px;
+        border: 1px solid #cde5d4;
+        flex-grow: 1;
+    }
+    button.primary {
+        background: #489051;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        padding: 8px 18px;
+        font-weight: bold;
+        margin-top: 0;
+        transition: background 0.3s;
+        white-space: nowrap;
+    }
+    button.primary:hover {
+        background: #75c286;
+    }
+    .highlight-yellow {
+        background-color: #fffa8b;
+        transition: background-color 1s;
+    }
+    .graph-container {
+        width: 45%;
+        background: #f5fdf7;
+        padding: 16px;
+        border-radius: 14px;
+        border: 1px solid #e2e2e2;
+        margin: 8px 5px 16px 0;
+        display: inline-block;
+        vertical-align: top;
+        box-shadow: 0 3px 12px #d6eedd83;
+    }
+    @media (max-width: 900px){
+        .graph-container{ width: 95%; margin:auto; margin-bottom:16px;}
+    }
+    .search-and-button {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 12px;
+        max-width: 700px;
+        flex-wrap: wrap;
+    }
+
+    /* Modal base styles */
+    .modal {
+        display: none; 
+        position: fixed; 
+        z-index: 1000;
+        left: 0; top: 0;
+        width: 100%; height: 100%;
+        overflow: auto;
+        background-color: rgba(0,0,0,0.4); /* fondo semitransparente */
+    }
+    .modal-content {
+        background-color: #fefefe;
+        margin: 5% auto; /* centrado vertical */
+        padding: 20px;
+        border-radius: 12px;
+        width: 90%;
+        max-width: 600px;
+        position: relative;
+        box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+    }
+    .close {
+        position: absolute;
+        right: 20px;
+        top: 10px;
+        font-size: 28px;
+        font-weight: bold;
+        cursor: pointer;
+        color: #555;
+        user-select: none;
+    }
+
+    form.add-form label {
+        display: block;
+        margin: 12px 0 5px 0;
+        font-weight: bold;
+        color: #35672b;
+    }
+    form.add-form input[type=text], form.add-form input[type=number] {
+        width: 100%;
+        padding: 8px 10px;
+        border: 1px solid #a3d087;
+        border-radius: 6px;
+        box-sizing: border-box;
+        margin-bottom: 12px;
+        font-size: 16px;
+        color: #24412b;
+    }
+    form.add-form button.submit-btn {
+        margin-top: 10px;
+        padding: 10px 20px;
+        background: #489051;
+        color: white;
+        border: none;
+        font-weight: bold;
+        border-radius: 6px;
+        cursor: pointer;
+        transition: background 0.3s;
+        width: 100%;
+        font-size: 17px;
+    }
+    form.add-form button.submit-btn:hover {
+        background: #75c286;
+    }
+    .msg {
+        margin: 8px 0 0 0;
+        font-size: 15px;
+        min-height: 20px;
+    }
+    .msg.success {
+        color: green;
+    }
+    .msg.error {
+        color: red;
+    }
+</style>
 </head>
 <body>
 
@@ -195,7 +218,7 @@
     <div id="inventario" class="tabcontent active">
         <div class="search-and-button">
             <input type="text" id="searchInventario" class="search-bar" placeholder="Buscar por ID Llanta..." oninput="searchInventario()" />
-            <button class="primary" id="toggleFormInventarioBtn" onclick="toggleFormInventario()">Agregar Llanta</button>
+            <button class="primary" onclick="openModal('modalInventario')">Agregar Llanta</button>
             <button class="primary" onclick="fetchInventario()">Actualizar inventario</button>
         </div>
 
@@ -211,34 +234,40 @@
             </thead>
             <tbody></tbody>
         </table>
+    </div>
 
-        <form id="formAgregarLlanta" class="add-form" onsubmit="event.preventDefault(); agregarNuevaLlanta();">
-            <h3>Agregar Nueva Llanta</h3>
-            <label for="agregarId">ID (dejar vacío para autogenerar)</label>
-            <input type="text" id="agregarId" placeholder="Ejemplo: 1001 o dejar vacío para auto" />
+    <!-- Modal Inventario -->
+    <div id="modalInventario" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal('modalInventario')">&times;</span>
+            <form id="formAgregarLlanta" class="add-form" onsubmit="event.preventDefault(); agregarNuevaLlanta();">
+                <h3>Agregar Nueva Llanta</h3>
+                <label for="agregarId">ID (dejar vacío para autogenerar)</label>
+                <input type="text" id="agregarId" placeholder="Ejemplo: 1001 o dejar vacío para auto" />
 
-            <label for="agregarDescripcion">Descripción</label>
-            <input type="text" id="agregarDescripcion" placeholder="Descripción de la llanta" required />
+                <label for="agregarDescripcion">Descripción</label>
+                <input type="text" id="agregarDescripcion" placeholder="Descripción de la llanta" required />
 
-            <label for="agregarPeso">Peso (kg)</label>
-            <input type="number" id="agregarPeso" step="0.01" min="0" placeholder="Ejemplo: 12.5" required />
+                <label for="agregarPeso">Peso (kg)</label>
+                <input type="number" id="agregarPeso" step="0.01" min="0" placeholder="Ejemplo: 12.5" required />
 
-            <label for="agregarVolumen">Volumen unitario (m³)</label>
-            <input type="number" id="agregarVolumen" step="0.0001" min="0" placeholder="Ejemplo: 0.0035" required />
+                <label for="agregarVolumen">Volumen unitario (m³)</label>
+                <input type="number" id="agregarVolumen" step="0.0001" min="0" placeholder="Ejemplo: 0.0035" required />
 
-            <label for="agregarValor">Valor unitario ($)</label>
-            <input type="number" id="agregarValor" step="0.01" min="0" placeholder="Ejemplo: 1500.00" required />
+                <label for="agregarValor">Valor unitario ($)</label>
+                <input type="number" id="agregarValor" step="0.01" min="0" placeholder="Ejemplo: 1500.00" required />
 
-            <button type="submit" class="submit-btn">Agregar Llanta</button>
-            <div id="msgInventario" class="msg"></div>
-        </form>
+                <button type="submit" class="submit-btn">Agregar Llanta</button>
+                <div id="msgInventario" class="msg"></div>
+            </form>
+        </div>
     </div>
 
     <!-- Flota -->
     <div id="flota" class="tabcontent">
         <div class="search-and-button">
             <input type="text" id="searchFlota" class="search-bar" placeholder="Buscar por Número Económico..." oninput="searchFlota()" />
-            <button class="primary" id="toggleFormFlotaBtn" onclick="toggleFormFlota()">Agregar Camión</button>
+            <button class="primary" onclick="openModal('modalFlota')">Agregar Camión</button>
             <button class="primary" onclick="fetchFlota()">Actualizar flota</button>
         </div>
 
@@ -257,37 +286,43 @@
             </thead>
             <tbody></tbody>
         </table>
+    </div>
 
-        <form id="formAgregarCamion" class="add-form" onsubmit="event.preventDefault(); agregarNuevoCamion();">
-            <h3>Agregar Nuevo Camión</h3>
+    <!-- Modal Flota -->
+    <div id="modalFlota" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal('modalFlota')">&times;</span>
+            <form id="formAgregarCamion" class="add-form" onsubmit="event.preventDefault(); agregarNuevoCamion();">
+                <h3>Agregar Nuevo Camión</h3>
 
-            <label for="agregarEconomico">Número Económico (dejar vacío para autogenerar)</label>
-            <input type="text" id="agregarEconomico" placeholder="Ejemplo: 101 o dejar vacío para auto" />
+                <label for="agregarEconomico">Número Económico (dejar vacío para autogenerar)</label>
+                <input type="text" id="agregarEconomico" placeholder="Ejemplo: 101 o dejar vacío para auto" />
 
-            <label for="agregarUnidad">Unidad</label>
-            <input type="text" id="agregarUnidad" placeholder="Unidad/vehículo" required />
+                <label for="agregarUnidad">Unidad</label>
+                <input type="text" id="agregarUnidad" placeholder="Unidad/vehículo" required />
 
-            <label for="agregarAsignado">Asignado</label>
-            <input type="text" id="agregarAsignado" placeholder="Nombre responsable" required />
+                <label for="agregarAsignado">Asignado</label>
+                <input type="text" id="agregarAsignado" placeholder="Nombre responsable" required />
 
-            <label for="agregarModelo">Modelo</label>
-            <input type="text" id="agregarModelo" placeholder="Modelo del camión" required />
+                <label for="agregarModelo">Modelo</label>
+                <input type="text" id="agregarModelo" placeholder="Modelo del camión" required />
 
-            <label for="agregarPlacas">Placas</label>
-            <input type="text" id="agregarPlacas" placeholder="Placas del camión" required />
+                <label for="agregarPlacas">Placas</label>
+                <input type="text" id="agregarPlacas" placeholder="Placas del camión" required />
 
-            <label for="agregarUbicacion">Ubicación</label>
-            <input type="text" id="agregarUbicacion" placeholder="Ubicación del camión" required />
+                <label for="agregarUbicacion">Ubicación</label>
+                <input type="text" id="agregarUbicacion" placeholder="Ubicación del camión" required />
 
-            <label for="agregarCarga">Capacidad de Carga (kg)</label>
-            <input type="number" id="agregarCarga" step="0.01" min="0" placeholder="Ejemplo: 15000" required />
+                <label for="agregarCarga">Capacidad de Carga (kg)</label>
+                <input type="number" id="agregarCarga" step="0.01" min="0" placeholder="Ejemplo: 15000" required />
 
-            <label for="agregarVolumenCamion">Capacidad de Volumen (m³)</label>
-            <input type="number" id="agregarVolumenCamion" step="0.0001" min="0" placeholder="Ejemplo: 40.5" required />
+                <label for="agregarVolumenCamion">Capacidad de Volumen (m³)</label>
+                <input type="number" id="agregarVolumenCamion" step="0.0001" min="0" placeholder="Ejemplo: 40.5" required />
 
-            <button type="submit" class="submit-btn">Agregar Camión</button>
-            <div id="msgFlota" class="msg"></div>
-        </form>
+                <button type="submit" class="submit-btn">Agregar Camión</button>
+                <div id="msgFlota" class="msg"></div>
+            </form>
+        </div>
     </div>
 
     <!-- Pedidos -->
@@ -387,6 +422,24 @@
     let pedidosEnCurso = [];
     let pedidoCamion = null;
 
+    // Abrir y cerrar modales
+    function openModal(id) {
+        document.getElementById(id).style.display = 'block';
+    }
+    function closeModal(id) {
+        document.getElementById(id).style.display = 'none';
+    }
+    // Cerrar modal si el usuario hace click fuera del contenido
+    window.onclick = function(event) {
+        const modales = ['modalInventario','modalFlota'];
+        modales.forEach(id => {
+            const modal = document.getElementById(id);
+            if(event.target === modal) {
+                modal.style.display = 'none';
+            }
+        });
+    };
+
     // ---------- Funciones para cargar datos ---------
     async function fetchInventario() {
         try {
@@ -426,30 +479,6 @@
             if (button.dataset.tab === 'pedidos-confirmados') renderPedidosConfirmados();
         });
     });
-
-    // ---------- Toggle formularios ----------
-    function toggleFormInventario() {
-        const form = document.getElementById('formAgregarLlanta');
-        const btn = document.getElementById('toggleFormInventarioBtn');
-        if (form.style.display === 'none' || form.style.display === '') {
-            form.style.display = 'block';
-            btn.textContent = 'Cerrar formulario';
-        } else {
-            form.style.display = 'none';
-            btn.textContent = 'Agregar Llanta';
-        }
-    }
-    function toggleFormFlota() {
-        const form = document.getElementById('formAgregarCamion');
-        const btn = document.getElementById('toggleFormFlotaBtn');
-        if (form.style.display === 'none' || form.style.display === '') {
-            form.style.display = 'block';
-            btn.textContent = 'Cerrar formulario';
-        } else {
-            form.style.display = 'none';
-            btn.textContent = 'Agregar Camión';
-        }
-    }
 
     // ---------- Renderizar Inventario ----------
     function renderInventario() {
@@ -530,6 +559,7 @@
             msgDiv.classList.add('success');
             limpiarFormularioInventario();
             await fetchInventario();
+            closeModal('modalInventario');
         } catch (e) {
             msgDiv.textContent = 'Error: ' + e.message;
             msgDiv.classList.add('error');
@@ -633,6 +663,7 @@
             msgDiv.classList.add('success');
             limpiarFormularioFlota();
             await fetchFlota();
+            closeModal('modalFlota');
         } catch (e) {
             msgDiv.textContent = 'Error: ' + e.message;
             msgDiv.classList.add('error');
