@@ -118,7 +118,8 @@
             align-items: center;
             gap: 12px;
             margin-bottom: 12px;
-            max-width: 600px;
+            max-width: 700px;
+            flex-wrap: wrap;
         }
         /* Formulario compacto para agregar */
         form.add-form {
@@ -129,6 +130,7 @@
             margin-top: 20px;
             max-width: 700px;
             box-shadow: 0 3px 10px #a3d0a083;
+            display: none; /* oculto por defecto */
         }
         form.add-form label {
             display: block;
@@ -193,6 +195,7 @@
     <div id="inventario" class="tabcontent active">
         <div class="search-and-button">
             <input type="text" id="searchInventario" class="search-bar" placeholder="Buscar por ID Llanta..." oninput="searchInventario()" />
+            <button class="primary" id="toggleFormInventarioBtn" onclick="toggleFormInventario()">Agregar Llanta</button>
             <button class="primary" onclick="fetchInventario()">Actualizar inventario</button>
         </div>
 
@@ -235,6 +238,7 @@
     <div id="flota" class="tabcontent">
         <div class="search-and-button">
             <input type="text" id="searchFlota" class="search-bar" placeholder="Buscar por Número Económico..." oninput="searchFlota()" />
+            <button class="primary" id="toggleFormFlotaBtn" onclick="toggleFormFlota()">Agregar Camión</button>
             <button class="primary" onclick="fetchFlota()">Actualizar flota</button>
         </div>
 
@@ -423,6 +427,30 @@
         });
     });
 
+    // ---------- Toggle formularios ----------
+    function toggleFormInventario() {
+        const form = document.getElementById('formAgregarLlanta');
+        const btn = document.getElementById('toggleFormInventarioBtn');
+        if (form.style.display === 'none' || form.style.display === '') {
+            form.style.display = 'block';
+            btn.textContent = 'Cerrar formulario';
+        } else {
+            form.style.display = 'none';
+            btn.textContent = 'Agregar Llanta';
+        }
+    }
+    function toggleFormFlota() {
+        const form = document.getElementById('formAgregarCamion');
+        const btn = document.getElementById('toggleFormFlotaBtn');
+        if (form.style.display === 'none' || form.style.display === '') {
+            form.style.display = 'block';
+            btn.textContent = 'Cerrar formulario';
+        } else {
+            form.style.display = 'none';
+            btn.textContent = 'Agregar Camión';
+        }
+    }
+
     // ---------- Renderizar Inventario ----------
     function renderInventario() {
         const tbody = document.querySelector('#tablaInventario tbody');
@@ -475,24 +503,20 @@
         msgDiv.textContent = '';
         msgDiv.className = 'msg';
 
-        // Validar campos requeridos
         if (!descripcion || isNaN(peso) || isNaN(volumen) || isNaN(valor)) {
             msgDiv.textContent = 'Por favor completa todos los campos correctamente.';
             msgDiv.classList.add('error');
             return;
         }
 
-        // Generar ID si esta vacio
         let id = idInput || generarNuevoIdInventario();
 
-        // Validar que ID no exista
         if (inventario.some(ll => ll.id === id)) {
             msgDiv.textContent = 'El ID ya existe. Por favor usa otro.';
             msgDiv.classList.add('error');
             return;
         }
 
-        // Crear objeto para enviar
         const nuevoDato = { id, descripcion, peso, volumen, valor };
 
         try {
@@ -505,13 +529,12 @@
             msgDiv.textContent = 'Llanta agregada correctamente!';
             msgDiv.classList.add('success');
             limpiarFormularioInventario();
-            await fetchInventario(); // Recargar tabla con nuevo dato
+            await fetchInventario();
         } catch (e) {
             msgDiv.textContent = 'Error: ' + e.message;
             msgDiv.classList.add('error');
         }
     }
-    // Generar nuevo ID para inventario (simple autoincremental)
     function generarNuevoIdInventario() {
         if (!inventario.length) return "1";
         let maxId = inventario.reduce((max, ll) => {
@@ -574,17 +597,14 @@
         msgDiv.textContent = '';
         msgDiv.className = 'msg';
 
-        // Validaciones básicas
         if (!unidad || !asignado || !modelo || !placas || !ubicacion || isNaN(carga) || isNaN(volumen)) {
             msgDiv.textContent = 'Por favor completa todos los campos correctamente.';
             msgDiv.classList.add('error');
             return;
         }
 
-        // Generar numEconomico si está vacío
         let economico = economicoInput || generarNuevoEconomico();
 
-        // Validar no duplicado
         if (flota.some(cam => cam.economico === economico)) {
             msgDiv.textContent = 'El número económico ya existe. Por favor usa otro.';
             msgDiv.classList.add('error');
@@ -618,7 +638,6 @@
             msgDiv.classList.add('error');
         }
     }
-    // Generar nuevo número económico para camión (autoincremental)
     function generarNuevoEconomico() {
         if (!flota.length) return "1";
         let maxEco = flota.reduce((max, cam) => {
@@ -638,8 +657,7 @@
         document.getElementById('agregarVolumenCamion').value = '';
     }
 
-    // ---------- Pedidos (misma lógica que antes) ----------
-
+    // ---------- Pedidos (igual que antes) ----------
     function llenarDatosCamionPedido() {
         const numEco = document.getElementById('inputPedidoNumEconomico').value.trim();
         const div = document.getElementById('datosCamionPedido');
