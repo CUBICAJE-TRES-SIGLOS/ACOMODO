@@ -843,18 +843,29 @@
         }
         chartVolumen.update(); chartCarga.update();
     }
-    function verificarCapacidad(volumen, peso) {
-        if (!pedidoCamion) return;
-        const capVol = +pedidoCamion.volumen;
-        const capPes = +pedidoCamion.carga;
-        const volumenPercent = (volumen / capVol) * 100,
-            pesoPercent = (peso / capPes) * 100;
-        if (volumenPercent > 80 || pesoPercent > 80) {
-            if (confirm('El camión se está llenando (>80%), ¿desea completar con otro camión?')) {
-                alert('Aquí puedes permitir solicitar otro camión para continuar cargando los pedidos.');
-            }
+    // ...existing code...
+function verificarCapacidad(volumen, peso) {
+    if (!pedidoCamion) return;
+    const capVol = +pedidoCamion.volumen;
+    const capPes = +pedidoCamion["capacidad de carga (kg)"];
+    const volumenPercent = (volumen / capVol) * 100,
+        pesoPercent = (peso / capPes) * 100;
+
+    // ALERTA si pasa el 85%
+    if (volumenPercent > 85) {
+        alert('¡Advertencia! Solo queda el 15% de espacio de volumen disponible en el camión.');
+    }
+    if (pesoPercent > 85) {
+        alert('¡Advertencia! Solo queda el 15% de capacidad de carga disponible en el camión.');
+    }
+
+    if (volumenPercent > 80 || pesoPercent > 80) {
+        if (confirm('El camión se está llenando (>80%), ¿desea completar con otro camión?')) {
+            alert('Aquí puedes permitir solicitar otro camión para continuar cargando los pedidos.');
         }
     }
+}
+// ...existing code...
     function aceptarPedido() {
         if (!pedidoCamion) { alert('Debe seleccionar un camión válido para aceptar el pedido.'); return; }
         if (pedidosEnCurso.length === 0) { alert('El pedido está vacío.'); return; }
@@ -913,7 +924,7 @@
     <ul>
       <li>En <b>Inventario</b>, consulta y agrega llantas.</li>
       <li>En <b>Flota</b>, administra camiones y capacidades.</li>
-      <li>En <b>Pedidos</b>,gestiona la asignación de pedidos a las diferentes unidades controlando su volumen y capacidad de carga.</li>
+      <li>En <b>Pedidos</b>, gestiona la asignación de pedidos a las diferentes unidades controlando su volumen y capacidad de carga.</li>
       <li>En <b>Pedidos Confirmados</b>, revisa y gestiona los pedidos aceptados.</li>
     </ul>
     <p>Usa la barra de búsqueda para filtrar y los botones para agregar o actualizar datos.</p>
