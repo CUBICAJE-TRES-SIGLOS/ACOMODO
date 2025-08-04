@@ -444,7 +444,7 @@
     // ---------- Funciones para cargar datos ---------
     async function fetchInventario() {
         try {
-            const res = await fetch('https://sheetdb.io/api/v1/r2p3mz6asrkyg');
+            const res = await fetch('https://sheetdb.io/api/v1/eg7m60zcphq9e');
             if (!res.ok) throw new Error('Error al cargar inventario');
             inventario = await res.json();
             renderInventario();
@@ -454,7 +454,7 @@
     }
     async function fetchFlota() {
         try {
-            const res = await fetch('https://sheetdb.io/api/v1/r2p3mz6asrkyg?sheet=flota');
+            const res = await fetch('https://sheetdb.io/api/v1/eg7m60zcphq9e?sheet=flota');
             if (!res.ok) throw new Error('Error al cargar flota');
             flota = await res.json();
             renderFlota();
@@ -550,7 +550,7 @@
         const nuevoDato = { id, descripcion, peso, volumen, valor };
 
         try {
-            const res = await fetch('https://sheetdb.io/api/v1/r2p3mz6asrkyg', {
+            const res = await fetch('https://sheetdb.io/api/v1/eg7m60zcphq9e', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ data: nuevoDato })
@@ -658,7 +658,7 @@
         };
 
         try {
-            const res = await fetch('https://sheetdb.io/api/v1/r2p3mz6asrkyg?sheet=flota', {
+            const res = await fetch('https://sheetdb.io/api/v1/eg7m60zcphq9e?sheet=flota', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ data: nuevoDato })
