@@ -582,24 +582,28 @@
     }
 
     // ---------- Renderizar Flota ----------
-    function renderFlota() {
-        const tbody = document.querySelector('#tablaFlota tbody');
-        tbody.innerHTML = '';
-        flota.forEach(camion => {
-            const tr = document.createElement('tr');
-            tr.innerHTML = `
-                <td>${camion.economico}</td>
-                <td>${camion.unidad}</td>
-                <td>${camion.asignado}</td>
-                <td>${camion.modelo}</td>
-                <td>${camion.placas}</td>
-                <td>${camion.ubicacion}</td>
-                <td>${(+camion.carga).toFixed(2)}</td>
-                <td>${(+camion.volumen).toFixed(4)}</td>`;
-            tbody.appendChild(tr);
-        });
-        highlightSearch('flota', document.getElementById('searchFlota').value);
-    }
+  function renderFlota() {
+    const tbody = document.querySelector('#tablaFlota tbody');
+    tbody.innerHTML = '';
+    flota.forEach(camion => {
+        const cargaNum = parseFloat(camion.carga);
+        const volumenNum = parseFloat(camion.volumen);
+        const cargaMostrar = isNaN(cargaNum) ? '-' : cargaNum.toFixed(2);
+        const volumenMostrar = isNaN(volumenNum) ? '-' : volumenNum.toFixed(4);
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td>${camion.economico || '-'}</td>
+            <td>${camion.unidad || '-'}</td>
+            <td>${camion.asignado || '-'}</td>
+            <td>${camion.modelo || '-'}</td>
+            <td>${camion.placas || '-'}</td>
+            <td>${camion.ubicacion || '-'}</td>
+            <td>${cargaMostrar}</td>
+            <td>${volumenMostrar}</td>`;
+        tbody.appendChild(tr);
+    });
+    highlightSearch('flota', document.getElementById('searchFlota').value);
+}
     function searchFlota() {
         const filter = document.getElementById('searchFlota').value.toLowerCase();
         const tbody = document.querySelector('#tablaFlota tbody');
