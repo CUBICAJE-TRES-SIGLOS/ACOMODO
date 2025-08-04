@@ -698,8 +698,7 @@
         const div = document.getElementById('datosCamionPedido');
         pedidoCamion = flota.find(c => c.economico.toString() === numEco);
         if (pedidoCamion) {
-            div.innerText = `Camión: ${pedidoCamion.unidad}, Asignado: ${pedidoCamion.asignado}, Modelo: ${pedidoCamion.modelo}, Capacidad carga: ${pedidoCamion.carga} kg, Cap. volumen: ${pedidoCamion.volumen} m³`;
-            pedidosEnCurso = [];
+           div.innerText = `Camión: ${pedidoCamion.unidad}, Asignado: ${pedidoCamion.asignado}, Modelo: ${pedidoCamion.modelo}, Capacidad carga: ${pedidoCamion["capacidad de carga (kg)"]} kg, Cap. volumen: ${pedidoCamion["volumen"]} m³`;
             renderPedidosActuales();
             actualizarGraficas();
         } else {
@@ -836,8 +835,8 @@
         } else {
             let totalVolumen = pedidosEnCurso.reduce((acc, cur) => acc + cur.volumen, 0);
             let totalPeso = pedidosEnCurso.reduce((acc, cur) => acc + cur.peso, 0);
-            let volTotal = +pedidoCamion.volumen;
-            let pesoTotal = +pedidoCamion.carga;
+            let volTotal = +pedidoCamion["volumen"];
+            let pesoTotal = +pedidoCamion["capacidad de carga (kg)"];
             chartVolumen.data.datasets[0].data = [Math.min(totalVolumen, volTotal), Math.max(0, volTotal - totalVolumen)];
             chartCarga.data.datasets[0].data = [Math.min(totalPeso, pesoTotal), Math.max(0, pesoTotal - totalPeso)];
         }
