@@ -899,6 +899,40 @@
         }
     }
 </script>
+<!-- ...tu código existente arriba... -->
 
+</section>
+
+<!-- Modal instrucciones -->
+<div id="modalInstrucciones" class="modal">
+  <div class="modal-content" style="max-width: 500px; padding: 20px;">
+    <span class="close" onclick="cerrarInstrucciones()">&times;</span>
+    <h2>Bienvenido al Sistema de Cubicaje Tres Siglos</h2>
+    <p>Para empezar:</p>
+    <ul>
+      <li>En <b>Inventario</b>, consulta y agrega llantas.</li>
+      <li>En <b>Flota</b>, administra camiones y capacidades.</li>
+      <li>En <b>Pedidos</b>, asigna llantas a camiones y controla carga y volumen.</li>
+      <li>En <b>Pedidos Confirmados</b>, revisa y gestiona los pedidos aceptados.</li>
+    </ul>
+    <p>Usa la barra de búsqueda para filtrar y los botones para agregar o actualizar datos.</p>
+    <button onclick="cerrarInstrucciones()" style="background:#489051;color:white;padding:10px 15px;border:none;border-radius:5px;cursor:pointer;">Cerrar</button>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    // ...tu código JS existente...
+
+    // Mostrar el modal con las instrucciones cada vez que se carga la página
+    window.onload = function() {
+      document.getElementById('modalInstrucciones').style.display = 'block';
+    };
+
+    // Función para cerrar el modal de instrucciones
+    function cerrarInstrucciones() {
+      document.getElementById('modalInstrucciones').style.display = 'none';
+    }
+</script>
 </body>
 </html>
