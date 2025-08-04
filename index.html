@@ -586,8 +586,8 @@
     const tbody = document.querySelector('#tablaFlota tbody');
     tbody.innerHTML = '';
     flota.forEach(camion => {
-        const cargaNum = parseFloat(camion.carga);
-        const volumenNum = parseFloat(camion.volumen);
+        const cargaNum = parseFloat(camion["capacidad de carga (kg)"]);
+        const volumenNum = parseFloat(camion["volumen"]);
         const cargaMostrar = isNaN(cargaNum) ? '-' : cargaNum.toFixed(2);
         const volumenMostrar = isNaN(volumenNum) ? '-' : volumenNum.toFixed(4);
         const tr = document.createElement('tr');
