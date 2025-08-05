@@ -5,6 +5,7 @@
 <title>Sistema de cubicaje - Comercializadora de Llantas Tres Siglos</title>
 <link rel="icon" type="image/png" href="https://http2.mlstatic.com/storage/mshops-appearance-api/images/13/1184895213/logo-2022082314215812800.png">
 <style>
+    /* ... tu CSS existente sin cambios ... */
     body {
         font-family: Arial, sans-serif;
         margin: 0; padding: 0;
@@ -465,6 +466,18 @@
     fetchInventario();
     fetchFlota();
 
+    // Función para cargar pedidos confirmados desde hoja
+    async function fetchPedidosConfirmados() {
+        try {
+            const res = await fetch('https://sheetdb.io/api/v1/eg7m60zcphq9e?sheet=confirmados');
+            if (!res.ok) throw new Error('Error al cargar pedidos confirmados');
+            pedidosConfirmados = await res.json();
+            renderPedidosConfirmados();
+        } catch (e) {
+            alert('No se pudieron cargar los pedidos confirmados: ' + e.message);
+        }
+    }
+
     // ----- Cambiar pestañas -----
     const tablinks = document.querySelectorAll('.tablink');
     const tabcontents = document.querySelectorAll('.tabcontent');
@@ -477,7 +490,7 @@
             if (button.dataset.tab === 'inventario') renderInventario();
             if (button.dataset.tab === 'flota') renderFlota();
             if (button.dataset.tab === 'pedidos') resetPedidoInputs();
-            if (button.dataset.tab === 'pedidos-confirmados') renderPedidosConfirmados();
+            if (button.dataset.tab === 'pedidos-confirmados') fetchPedidosConfirmados();
         });
     });
 
@@ -595,7 +608,7 @@
         tr.innerHTML = `
             <td>${camion.economico || '-'}</td>
             <td>${camion.unidad || '-'}</td>
-            <td>${camion.encargado || '-'}</td>
+            <td>${camion.asignado || camion.encargado || '-'}</td>
             <td>${camion.modelo || '-'}</td>
             <td>${camion.identificacion || '-'}</td>
             <td>${camion.ubicacion || '-'}</td>
@@ -843,7 +856,6 @@
         }
         chartVolumen.update(); chartCarga.update();
     }
-    // ...existing code...
 function verificarCapacidad(volumen, peso) {
     if (!pedidoCamion) return;
     const capVol = +pedidoCamion.volumen;
@@ -865,30 +877,53 @@ function verificarCapacidad(volumen, peso) {
         }
     }
 }
-// ...existing code...
-    function aceptarPedido() {
-        if (!pedidoCamion) { alert('Debe seleccionar un camión válido para aceptar el pedido.'); return; }
-        if (pedidosEnCurso.length === 0) { alert('El pedido está vacío.'); return; }
+
+    // Modificada función aceptarPedido para guardar en SheetDB confirmados
+    async function aceptarPedido() {
+        if (!pedidoCamion) {
+            alert('Debe seleccionar un camión válido para aceptar el pedido.');
+            return;
+        }
+        if (pedidosEnCurso.length === 0) {
+            alert('El pedido está vacío.');
+            return;
+        }
+
         let totalVolumen = pedidosEnCurso.reduce((acc, cur) => acc + cur.volumen, 0);
         let totalPeso = pedidosEnCurso.reduce((acc, cur) => acc + cur.peso, 0);
         let totalValor = pedidosEnCurso.reduce((acc, cur) => acc + cur.valor, 0);
-        pedidosConfirmados.push({
+
+        const nuevoPedido = {
             camion: pedidoCamion.economico,
             llantas: pedidosEnCurso.map(p => p.id).join(', '),
             volumen: totalVolumen,
             peso: totalPeso,
             valor: totalValor
-        });
-        pedidosEnCurso = [];
-        pedidoCamion = null;
-        document.getElementById('datosCamionPedido').innerText = '';
-        document.getElementById('inputPedidoNumEconomico').value = '';
-        renderPedidosActuales();
-        actualizarGraficas();
-        alert('Pedido aceptado y movido a pedidos confirmados.');
-        renderPedidosConfirmados();
+        };
+
+        try {
+            const res = await fetch('https://sheetdb.io/api/v1/eg7m60zcphq9e?sheet=confirmados', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ data: nuevoPedido })
+            });
+            if (!res.ok) throw new Error('Error al guardar el pedido confirmado en la hoja de cálculo');
+            
+            pedidosConfirmados.push(nuevoPedido);
+            pedidosEnCurso = [];
+            pedidoCamion = null;
+            document.getElementById('datosCamionPedido').innerText = '';
+            document.getElementById('inputPedidoNumEconomico').value = '';
+            renderPedidosActuales();
+            actualizarGraficas();
+            alert('Pedido aceptado y guardado en pedidos confirmados.');
+            renderPedidosConfirmados();
+        } catch (error) {
+            alert('Error al guardar el pedido confirmado: ' + error.message);
+        }
     }
-    // -- Lista de pedidos confirmados --
+
+    // -- Renderizar pedidos confirmados --
     function renderPedidosConfirmados() {
         const tbody = document.querySelector('#tablaPedidosConfirmados tbody');
         tbody.innerHTML = '';
@@ -897,23 +932,22 @@ function verificarCapacidad(volumen, peso) {
             tr.innerHTML = `
                 <td>${pedido.camion}</td>
                 <td>${pedido.llantas}</td>
-                <td>${pedido.volumen.toFixed(4)}</td>
-                <td>${pedido.peso.toFixed(2)}</td>
-                <td>$${pedido.valor.toFixed(2)}</td>
+                <td>${parseFloat(pedido.volumen).toFixed(4)}</td>
+                <td>${parseFloat(pedido.peso).toFixed(2)}</td>
+                <td>$${parseFloat(pedido.valor).toFixed(2)}</td>
                 <td><button onclick="cancelarPedido(${idx})">Cancelar</button></td>`;
             tbody.appendChild(tr);
         });
     }
     function cancelarPedido(idx) {
         if (confirm('¿Seguro que desea cancelar este pedido?')) {
+            const pedidoACancelar = pedidosConfirmados[idx];
+            // Opcional: Podrías agregar lógica para eliminar en SheetDB también
             pedidosConfirmados.splice(idx, 1);
             renderPedidosConfirmados();
         }
     }
 </script>
-<!-- ...tu código existente arriba... -->
-
-</section>
 
 <!-- Modal instrucciones -->
 <div id="modalInstrucciones" class="modal">
@@ -932,10 +966,7 @@ function verificarCapacidad(volumen, peso) {
   </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-    // ...tu código JS existente...
-
     // Mostrar el modal con las instrucciones cada vez que se carga la página
     window.onload = function() {
       document.getElementById('modalInstrucciones').style.display = 'block';
