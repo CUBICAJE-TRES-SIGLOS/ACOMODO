@@ -227,7 +227,7 @@
         <table id="tablaInventario">
             <thead>
                 <tr>
-                    <th>ID</th>
+                    <th>clave</th>
                     <th>Descripción</th>
                     <th>Peso (kg)</th>
                     <th>Volumen (m³)</th>
@@ -501,7 +501,7 @@
         inventario.forEach(llanta => {
             const tr = document.createElement('tr');
             tr.innerHTML = `
-                <td>${llanta.id}</td>
+                <td>${llanta.clave}</td>
                 <td>${llanta.descripcion}</td>
                 <td>${(+llanta.peso).toFixed(2)}</td>
                 <td>${(+llanta.volumen).toFixed(3)}</td>
@@ -725,13 +725,13 @@
     }
     function autoCompletarLlantaPedido() {
         const codigo = document.getElementById('pedidoCodigoLlanta').value.trim();
-        const llanta = inventario.find(item => item.id.toString() === codigo);
+        const llanta = inventario.find(item => item.clave.toString() === codigo);
         if (llanta) {
             document.getElementById('pedidoDescripcionLlanta').innerText = llanta.descripcion;
             document.getElementById('pedidoCantidadLlanta').value = 1;
-            document.getElementById('pedidoPesoLlanta').innerText = (+llanta.peso).toFixed(2);
-            document.getElementById('pedidoVolumenLlanta').innerText = (+llanta.volumen).toFixed(4);
-            document.getElementById('pedidoValorUnitarioLlanta').innerText = (+llanta.valor).toFixed(2);
+            document.getElementById('pedidoPesoLlanta').innerText = Number(llanta.peso).toLocaleString('es-MX', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+            document.getElementById('pedidoVolumenLlanta').innerText = Number(llanta.volumen).toLocaleString('es-MX', {minimumFractionDigits: 4, maximumFractionDigits: 4});
+            document.getElementById('pedidoValorUnitarioLlanta').innerText = Number(llanta.valor).toLocaleString('es-MX', {minimumFractionDigits: 2, maximumFractionDigits: 2});
         } else {
             document.getElementById('pedidoDescripcionLlanta').innerText = '';
             document.getElementById('pedidoPesoLlanta').innerText = '0';
@@ -742,11 +742,11 @@
     function calcularTotalesPedido() {
         const cantidad = Number(document.getElementById('pedidoCantidadLlanta').value);
         const codigo = document.getElementById('pedidoCodigoLlanta').value.trim();
-        const llanta = inventario.find(item => item.id.toString() === codigo);
+        const llanta = inventario.find(item => item.clave.toString() === codigo);
         if (llanta && cantidad > 0) {
-            document.getElementById('pedidoPesoLlanta').innerText = (llanta.peso * cantidad).toFixed(2);
-            document.getElementById('pedidoVolumenLlanta').innerText = (llanta.volumen * cantidad).toFixed(4);
-            document.getElementById('pedidoValorUnitarioLlanta').innerText = (llanta.valor * cantidad).toFixed(2);
+            document.getElementById('pedidoPesoLlanta').innerText = Number(llanta.peso * cantidad).toLocaleString('es-MX', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+            document.getElementById('pedidoVolumenLlanta').innerText = Number(llanta.volumen * cantidad).toLocaleString('es-MX', {minimumFractionDigits: 4, maximumFractionDigits: 4});
+            document.getElementById('pedidoValorUnitarioLlanta').innerText = Number(llanta.valor * cantidad).toLocaleString('es-MX', {minimumFractionDigits: 2, maximumFractionDigits: 2});
         }
     }
     function agregarPedido() {
@@ -760,12 +760,12 @@
             alert("La cantidad debe ser mayor a 0.");
             return;
         }
-        const llanta = inventario.find(item => item.id.toString() === codigo);
+        const llanta = inventario.find(item => item.clave.toString() === codigo);
         if (!llanta) {
             alert("Llanta no encontrada en inventario.");
             return;
         }
-        const pedidoExistente = pedidosEnCurso.find(p => p.id === llanta.id);
+        const pedidoExistente = pedidosEnCurso.find(p => p.id === llanta.clave);
         if (pedidoExistente) {
             pedidoExistente.cantidad += cantidad;
             pedidoExistente.peso += (+llanta.peso * cantidad);
@@ -773,7 +773,7 @@
             pedidoExistente.valor += (+llanta.valor * cantidad);
         } else {
             pedidosEnCurso.push({
-                id: llanta.id,
+                clave: llanta.clave,
                 descripcion: llanta.descripcion,
                 cantidad: cantidad,
                 peso: (+llanta.peso) * cantidad,
@@ -791,12 +791,12 @@
         pedidosEnCurso.forEach((pedido, idx) => {
             const tr = document.createElement('tr');
             tr.innerHTML = `
-                <td>${pedido.id}</td>
+                <td>${pedido.clave}</td>
                 <td>${pedido.descripcion}</td>
                 <td>${pedido.cantidad}</td>
                 <td>${pedido.volumen.toFixed(4)}</td>
                 <td>${pedido.peso.toFixed(2)}</td>
-                <td>$${pedido.valor.toFixed(2)}</td>
+                <td>${pedido.valor.toLocaleString('es-MX', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
                 <td><button onclick="quitarPedido(${idx})">Quitar</button></td>
             `;
             tbody.appendChild(tr);
