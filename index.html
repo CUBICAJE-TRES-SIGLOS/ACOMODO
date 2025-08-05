@@ -504,8 +504,8 @@
                 <td>${llanta.id}</td>
                 <td>${llanta.descripcion}</td>
                 <td>${(+llanta.peso).toFixed(2)}</td>
-                <td>${(+llanta.volumen).toFixed(4)}</td>
-                <td>$${(+llanta.valor).toFixed(2)}</td>`;
+                <td>${(+llanta.volumen).toFixed(3)}</td>
+                <td>$${(+llanta.valor).toFixed(3)}</td>`;
             tbody.appendChild(tr);
         });
         highlightSearch('inventario', document.getElementById('searchInventario').value);
@@ -602,8 +602,8 @@
     flota.forEach(camion => {
         const cargaNum = parseFloat(camion["capacidad de carga (kg)"]);
         const volumenNum = parseFloat(camion["volumen"]);
-        const cargaMostrar = isNaN(cargaNum) ? '-' : cargaNum.toFixed(2);
-        const volumenMostrar = isNaN(volumenNum) ? '-' : volumenNum.toFixed(4);
+        const cargaMostrar = isNaN(cargaNum) ? '-' : cargaNum.toFixed(3);
+        const volumenMostrar = isNaN(volumenNum) ? '-' : volumenNum.toFixed(3);
         const tr = document.createElement('tr');
         tr.innerHTML = `
             <td>${camion.economico || '-'}</td>
@@ -712,7 +712,8 @@
         const div = document.getElementById('datosCamionPedido');
         pedidoCamion = flota.find(c => c.economico.toString() === numEco);
         if (pedidoCamion) {
-           div.innerText = `Camión: ${pedidoCamion.unidad}, Asignado: ${pedidoCamion.asignado}, Modelo: ${pedidoCamion.modelo}, Capacidad carga: ${pedidoCamion["capacidad de carga (kg)"]} kg, Cap. volumen: ${pedidoCamion["volumen"]} m³`;
+          const responsable = pedidoCamion.asignado || pedidoCamion.encargado || '-';
+          div.innerText = `Camión: ${pedidoCamion.unidad}, Asignado: ${responsable}, Modelo: ${pedidoCamion.modelo}, Capacidad carga: ${pedidoCamion["capacidad de carga (kg)"] || '-'} kg, Cap. volumen: ${pedidoCamion["volumen"] || '-'} m³`;
             renderPedidosActuales();
             actualizarGraficas();
         } else {
