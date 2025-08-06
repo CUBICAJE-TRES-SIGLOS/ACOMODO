@@ -457,7 +457,7 @@
     // ---------- Funciones para cargar datos ---------
     async function fetchInventario() {
         try {
-            const res = await fetch('https://sheetdb.io/api/v1/eg7m60zcphq9e');
+            const res = await fetch('https://sheetdb.io/api/v1/cz5zxp3959aew');
             if (!res.ok) throw new Error('Error al cargar inventario');
             inventario = await res.json();
             renderInventario();
@@ -467,7 +467,7 @@
     }
     async function fetchFlota() {
         try {
-            const res = await fetch('https://sheetdb.io/api/v1/eg7m60zcphq9e?sheet=flota');
+            const res = await fetch('https://sheetdb.io/api/v1/cz5zxp3959aew?sheet=flota');
             if (!res.ok) throw new Error('Error al cargar flota');
             flota = await res.json();
             renderFlota();
@@ -481,7 +481,7 @@
     // Función para cargar pedidos confirmados desde hoja
     async function fetchPedidosConfirmados() {
         try {
-            const res = await fetch('https://sheetdb.io/api/v1/eg7m60zcphq9e?sheet=confirmados');
+            const res = await fetch('https://sheetdb.io/api/v1/cz5zxp3959aew?sheet=confirmados');
             if (!res.ok) throw new Error('Error al cargar pedidos confirmados');
             pedidosConfirmados = await res.json();
             renderPedidosConfirmados();
@@ -578,7 +578,7 @@
         const nuevoDato = { id, descripcion, peso, volumen, valor, "Línea": Línea };
 
         try {
-            const res = await fetch('https://sheetdb.io/api/v1/eg7m60zcphq9e', {
+            const res = await fetch('https://sheetdb.io/api/v1/cz5zxp3959aew', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ data: nuevoDato })
@@ -686,7 +686,7 @@
         };
 
         try {
-            const res = await fetch('https://sheetdb.io/api/v1/eg7m60zcphq9e?sheet=flota', {
+            const res = await fetch('https://sheetdb.io/api/v1/cz5zxp3959aew?sheet=flota', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ data: nuevoDato })
@@ -928,7 +928,7 @@ function verificarCapacidad(volumen, peso) {
         };
 
         try {
-            const res = await fetch('https://sheetdb.io/api/v1/eg7m60zcphq9e?sheet=confirmados', {
+            const res = await fetch('https://sheetdb.io/api/v1/cz5zxp3959aew?sheet=confirmados', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ data: nuevoPedido })
