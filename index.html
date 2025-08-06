@@ -384,6 +384,7 @@
                 <tr>
                     <th>Código</th>
                     <th>Descripción</th>
+                    <th>Línea</th>
                     <th>Cantidad</th>
                     <th>Volumen Total</th>
                     <th>Peso Total</th>
@@ -402,16 +403,21 @@
     </div>
 
     <!-- Pedidos Confirmados -->
-    <div id="pedidos-confirmados" class="tabcontent" style="max-width: 900px;">
+    <div id="pedidos-confirmados" class="tabcontent" style="max-width: 1200px;">
         <h3>Pedidos Confirmados</h3>
-        <table id="tablaPedidosConfirmados">
+        <table id="tabla">
             <thead>
                 <tr>
                     <th>Camión</th>
                     <th>Llantas</th>
+                    <th>Descripción</th>
+                    <th>Cantidad</th>
+                    <th>Total,Cantidad</th>
+                    <th>Línea</th>
                     <th>Volumen</th>
                     <th>Peso</th>
                     <th>Valor ($)</th>
+                    <th>Fecha</th>
                     <th>Acción</th>
                 </tr>
             </thead>
@@ -786,6 +792,7 @@
             pedidosEnCurso.push({
                 clave: llanta.clave,
                 descripcion: llanta.descripcion,
+                linea: llanta.linea || '',
                 cantidad: cantidad,
                 peso: (+llanta.peso) * cantidad,
                 volumen: (+llanta.volumen) * cantidad,
@@ -804,6 +811,7 @@
             tr.innerHTML = `
                 <td>${pedido.clave}</td>
                 <td>${pedido.descripcion}</td>
+                <td>${pedido.linea || ''}</td> 
                 <td>${pedido.cantidad}</td>
                 <td>${pedido.volumen.toFixed(4)}</td>
                 <td>${pedido.peso.toFixed(2)}</td>
@@ -904,13 +912,19 @@ function verificarCapacidad(volumen, peso) {
         let totalVolumen = pedidosEnCurso.reduce((acc, cur) => acc + cur.volumen, 0);
         let totalPeso = pedidosEnCurso.reduce((acc, cur) => acc + cur.peso, 0);
         let totalValor = pedidosEnCurso.reduce((acc, cur) => acc + cur.valor, 0);
+        let totalCantidad = pedidosEnCurso.reduce((acc, cur) => acc + cur.cantidad, 0);
 
         const nuevoPedido = {
             camion: pedidoCamion.economico,
-            llantas: pedidosEnCurso.map(p => p.id).join(', '),
+            llantas: pedidosEnCurso.map(p => p.clave).join(', '),
+            descripcion: pedidosEnCurso.map(p => p.descripcion).join(', '),
+            cantidad: pedidosEnCurso.map(p => p.cantidad).join(', '),
+            linea: pedidosEnCurso.map(p => p.linea).join(', '),
             volumen: totalVolumen,
             peso: totalPeso,
-            valor: totalValor
+            valor: totalValor,
+            fecha: new Date().toLocaleDateString('es-MX'),
+            "total,cantidad": totalCantidad
         };
 
         try {
@@ -937,16 +951,27 @@ function verificarCapacidad(volumen, peso) {
 
     // -- Renderizar pedidos confirmados --
     function renderPedidosConfirmados() {
-        const tbody = document.querySelector('#tablaPedidosConfirmados tbody');
+        const tbody = document.querySelector('#tabla tbody');
         tbody.innerHTML = '';
         pedidosConfirmados.forEach((pedido, idx) => {
             const tr = document.createElement('tr');
             tr.innerHTML = `
                 <td>${pedido.camion}</td>
                 <td>${pedido.llantas}</td>
-                <td>${parseFloat(pedido.volumen).toFixed(4)}</td>
-                <td>${parseFloat(pedido.peso).toFixed(2)}</td>
-                <td>$${parseFloat(pedido.valor).toFixed(2)}</td>
+                <td>${pedido.descripcion || ''}</td>
+                <td>
+                  <ul style="padding-left:18px;margin:0;">
+                    ${pedido.cantidad
+                      ? pedido.cantidad.split(',').map(q => `<li style="text-align:left;">${q.trim()}</li>`).join('')
+                      : ''}
+                 </ul>
+                </td>
+                <td>${pedido["total,cantidad"] || ''}</td>
+                <td>${pedido.linea || ''}</td>
+                <td>${Number(pedido.volumen).toLocaleString('es-MX', { minimumFractionDigits: 4, maximumFractionDigits: 4 })}</td>
+                <td>${Number(pedido.peso).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                <td>$${Number(pedido.valor).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                <td>${pedido.fecha || ''}</td>
                 <td><button onclick="cancelarPedido(${idx})">Cancelar</button></td>`;
             tbody.appendChild(tr);
         });
