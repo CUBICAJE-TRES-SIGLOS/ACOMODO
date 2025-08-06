@@ -356,11 +356,11 @@
                 <tr>
                     <th>Código Llanta</th>
                     <th>Descripción</th>
+                    <th>Línea</th>
                     <th>Cantidad</th>
                     <th>Peso</th>
                     <th>Volumen</th>
                     <th>Valor Unitario ($)</th>
-                    <th>Línea</th>
                     <th>Acción</th>
                 </tr>
             </thead>
@@ -368,11 +368,11 @@
                 <tr>
                     <td><input type="text" id="pedidoCodigoLlanta" oninput="autoCompletarLlantaPedido()" /></td>
                     <td id="pedidoDescripcionLlanta"></td>
+                      <td id="pedidoLineaLlanta"></td>
                     <td><input type="number" id="pedidoCantidadLlanta" value="1" min="1" oninput="calcularTotalesPedido()" /></td>
                     <td id="pedidoPesoLlanta">0</td>
                     <td id="pedidoVolumenLlanta">0</td>
                     <td id="pedidoValorUnitarioLlanta">0</td>
-                    <td id="pedidoLineaLlanta"></td>
                     <td><button class="primary" onclick="agregarPedido()">Agregar</button></td>
                 </tr>
             </tbody>
