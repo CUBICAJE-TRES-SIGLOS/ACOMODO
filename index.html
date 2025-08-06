@@ -229,6 +229,7 @@
                 <tr>
                     <th>clave</th>
                     <th>Descripción</th>
+                    <th>Línea</th>
                     <th>Peso (kg)</th>
                     <th>Volumen (m³)</th>
                     <th>Valor ($)</th>
@@ -261,6 +262,9 @@
 
                 <button type="submit" class="submit-btn">Agregar Llanta</button>
                 <div id="msgInventario" class="msg"></div>
+
+                <label for="agregarLínea">Línea</label>
+                <input type="text" id="agregarLínea" placeholder="Ejemplo: Industrial" required />
             </form>
         </div>
     </div>
@@ -356,6 +360,7 @@
                     <th>Peso</th>
                     <th>Volumen</th>
                     <th>Valor Unitario ($)</th>
+                    <th>Línea</th>
                     <th>Acción</th>
                 </tr>
             </thead>
@@ -367,6 +372,7 @@
                     <td id="pedidoPesoLlanta">0</td>
                     <td id="pedidoVolumenLlanta">0</td>
                     <td id="pedidoValorUnitarioLlanta">0</td>
+                    <td id="pedidoLineaLlanta"></td>
                     <td><button class="primary" onclick="agregarPedido()">Agregar</button></td>
                 </tr>
             </tbody>
@@ -496,20 +502,22 @@
 
     // ---------- Renderizar Inventario ----------
     function renderInventario() {
-        const tbody = document.querySelector('#tablaInventario tbody');
-        tbody.innerHTML = '';
-        inventario.forEach(llanta => {
-            const tr = document.createElement('tr');
-            tr.innerHTML = `
-                <td>${llanta.clave}</td>
-                <td>${llanta.descripcion}</td>
-                <td>${(+llanta.peso).toFixed(2)}</td>
-                <td>${(+llanta.volumen).toFixed(3)}</td>
-                <td>$${(+llanta.valor).toFixed(3)}</td>`;
-            tbody.appendChild(tr);
-        });
-        highlightSearch('inventario', document.getElementById('searchInventario').value);
-    }
+    const tbody = document.querySelector('#tablaInventario tbody');
+    tbody.innerHTML = '';
+    inventario.forEach(llanta => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td>${llanta.clave}</td>
+            <td>${llanta.descripcion}</td>
+            <td>${llanta.linea || ''}</td>
+            <td>${(+llanta.peso).toFixed(2)}</td>
+            <td>${(+llanta.volumen).toFixed(3)}</td>
+            <td>$${(+llanta.valor).toFixed(3)}</td>
+        `;
+        tbody.appendChild(tr);
+    });
+    highlightSearch('inventario', document.getElementById('searchInventario').value);
+   }
     // Buscar ID inventario
     function searchInventario() {
         const filter = document.getElementById('searchInventario').value.toLowerCase();
@@ -542,11 +550,12 @@
         const peso = parseFloat(document.getElementById('agregarPeso').value);
         const volumen = parseFloat(document.getElementById('agregarVolumen').value);
         const valor = parseFloat(document.getElementById('agregarValor').value);
+        const Línea = document.getElementById('agregarLínea').value.trim();
         const msgDiv = document.getElementById('msgInventario');
         msgDiv.textContent = '';
         msgDiv.className = 'msg';
 
-        if (!descripcion || isNaN(peso) || isNaN(volumen) || isNaN(valor)) {
+        if (!descripcion || isNaN(peso) || isNaN(volumen) || isNaN(valor) || !Línea) {
             msgDiv.textContent = 'Por favor completa todos los campos correctamente.';
             msgDiv.classList.add('error');
             return;
@@ -560,7 +569,7 @@
             return;
         }
 
-        const nuevoDato = { id, descripcion, peso, volumen, valor };
+        const nuevoDato = { id, descripcion, peso, volumen, valor, "Línea": Línea };
 
         try {
             const res = await fetch('https://sheetdb.io/api/v1/eg7m60zcphq9e', {
@@ -732,11 +741,13 @@
             document.getElementById('pedidoPesoLlanta').innerText = Number(llanta.peso).toLocaleString('es-MX', {minimumFractionDigits: 2, maximumFractionDigits: 2});
             document.getElementById('pedidoVolumenLlanta').innerText = Number(llanta.volumen).toLocaleString('es-MX', {minimumFractionDigits: 4, maximumFractionDigits: 4});
             document.getElementById('pedidoValorUnitarioLlanta').innerText = Number(llanta.valor).toLocaleString('es-MX', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+            document.getElementById('pedidoLineaLlanta').innerText = llanta.linea || ''; 
         } else {
             document.getElementById('pedidoDescripcionLlanta').innerText = '';
             document.getElementById('pedidoPesoLlanta').innerText = '0';
             document.getElementById('pedidoVolumenLlanta').innerText = '0';
             document.getElementById('pedidoValorUnitarioLlanta').innerText = '0';
+            document.getElementById('pedidoLineaLlanta').innerText = ''; 
         }
     }
     function calcularTotalesPedido() {
