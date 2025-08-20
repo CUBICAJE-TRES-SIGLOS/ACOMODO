@@ -194,7 +194,7 @@
     }
     .msg.success {
         color: green;
-    }
+    } 
     .msg.error {
         color: red;
     }
@@ -327,11 +327,11 @@
 
                 <button type="submit" class="submit-btn">Agregar Camión</button>
                 <div id="msgFlota" class="msg"></div>
-            </form>
+            </form>      
         </div>
     </div>
-
-    <!-- Pedidos -->
+          
+    <!-- Pedidos -->    
     <div id="pedidos" class="tabcontent" style="max-width: 1000px;">
         <div>
             <label for="inputPedidoNumEconomico">Número Económico Camión:</label>
@@ -366,15 +366,15 @@
             </thead>
             <tbody>
                 <tr>
-                    <td><input type="text" id="pedidoCodigoLlanta" oninput="autoCompletarLlantaPedido()" /></td>
-                    <td id="pedidoDescripcionLlanta"></td>
-                      <td id="pedidoLineaLlanta"></td>
-                    <td><input type="number" id="pedidoCantidadLlanta" value="1" min="1" oninput="calcularTotalesPedido()" /></td>
-                    <td id="pedidoPesoLlanta">0</td>
-                    <td id="pedidoVolumenLlanta">0</td>
-                    <td id="pedidoValorUnitarioLlanta">0</td>
-                    <td><button class="primary" onclick="agregarPedido()">Agregar</button></td>
-                </tr>
+                   <td><input type="text" id="pedidoCodigoLlanta" oninput="autoCompletarLlantaPedidoPorCodigo()" /></td>
+                   <td><input type="text" id="pedidoDescripcionLlantaInput" oninput="autoCompletarLlantaPedidoPorDescripcion()" /></td>
+                   <td id="pedidoLineaLlanta"></td>
+                   <td><input type="number" id="pedidoCantidadLlanta" value="1" min="1" oninput="calcularTotalesPedido()" /></td>
+                   <td id="pedidoPesoLlanta">0</td>
+                   <td id="pedidoVolumenLlanta">0</td>
+                   <td id="pedidoValorUnitarioLlanta">0</td>
+                   <td><button class="primary" onclick="agregarPedido()">Agregar</button></td>
+               </tr>
             </tbody>
         </table>
 
@@ -424,7 +424,7 @@
             <tbody></tbody>
         </table>
     </div>
-
+  
 </section>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -590,11 +590,14 @@ async function guardarEdicionLlanta(clave) {
 function searchInventario() {
     const filter = document.getElementById('searchInventario').value.toLowerCase();
     const tbody = document.querySelector('#tablaInventario tbody');
-    for (let row of tbody.rows) {
-            const idCell = row.cells[0].textContent.toLowerCase();
-            row.style.display = idCell.includes(filter) ? '' : 'none';
-            if (idCell.includes(filter) && filter) {
-                row.classList.add('highlight-yellow');
+     for (let row of tbody.rows) {
+        const claveCell = row.cells[0].textContent.toLowerCase();
+        const descripcionCell = row.cells[1].textContent.toLowerCase();
+        // Busca en clave o descripción
+        const match = claveCell.includes(filter) || descripcionCell.includes(filter);
+        row.style.display = match ? '' : 'none';
+        if (match && filter) {
+            row.classList.add('highlight-yellow');
                 setTimeout(() => row.classList.remove('highlight-yellow'), 1100);
             }
         }
@@ -609,6 +612,9 @@ function searchInventario() {
                 setTimeout(() => row.classList.remove('highlight-yellow'), 900);
             }
         });
+    }
+    function buscarLlantaPorId(id) {
+        return inventario.find(llanta => llanta.id === id);
     }
 
     // ---------- Agregar nueva llanta a SheetDB ----------
@@ -747,15 +753,15 @@ function searchInventario() {
         renderFlota();
         closeModal('modalFlota');
         alert('Camión editado correctamente.');
-      } catch (error) {
+      } catch (error) {          
         alert('Error al editar: ' + error.message);
       }
-    }
+    }    
     function searchFlota() {
         const filter = document.getElementById('searchFlota').value.toLowerCase();
         const tbody = document.querySelector('#tablaFlota tbody');
         for (let row of tbody.rows) {
-            const idCell = row.cells[0].textContent.toLowerCase();
+            const idCell = row.cells[0].textContent.toLowerCase(); 
             row.style.display = idCell.includes(filter) ? '' : 'none';
             if (idCell.includes(filter) && filter) {
                 row.classList.add('highlight-yellow');
@@ -856,22 +862,40 @@ function searchInventario() {
             actualizarGraficas();
         }
     }
-    function autoCompletarLlantaPedido() {
+    function autoCompletarLlantaPedidoPorCodigo() {
         const codigo = document.getElementById('pedidoCodigoLlanta').value.trim();
         const llanta = inventario.find(item => item.clave.toString() === codigo);
         if (llanta) {
-            document.getElementById('pedidoDescripcionLlanta').innerText = llanta.descripcion;
+            document.getElementById('pedidoDescripcionLlantaInput').value = llanta.descripcion;
+            document.getElementById('pedidoLineaLlanta').innerText = llanta.linea || '';
             document.getElementById('pedidoCantidadLlanta').value = 1;
             document.getElementById('pedidoPesoLlanta').innerText = Number(llanta.peso).toLocaleString('es-MX', {minimumFractionDigits: 2, maximumFractionDigits: 2});
             document.getElementById('pedidoVolumenLlanta').innerText = Number(llanta.volumen).toLocaleString('es-MX', {minimumFractionDigits: 4, maximumFractionDigits: 4});
-            document.getElementById('pedidoValorUnitarioLlanta').innerText = Number(llanta.valor).toLocaleString('es-MX', {minimumFractionDigits: 2, maximumFractionDigits: 2});
-            document.getElementById('pedidoLineaLlanta').innerText = llanta.linea || ''; 
+            document.getElementById('pedidoValorUnitarioLlanta').innerText = Number(llanta.valor).toLocaleString('es-MX', {minimumFractionDigits: 2, maximumFractionDigits: 2}); 
         } else {
-            document.getElementById('pedidoDescripcionLlanta').innerText = '';
-            document.getElementById('pedidoPesoLlanta').innerText = '0';
-            document.getElementById('pedidoVolumenLlanta').innerText = '0';
-            document.getElementById('pedidoValorUnitarioLlanta').innerText = '0';
-            document.getElementById('pedidoLineaLlanta').innerText = ''; 
+             document.getElementById('pedidoDescripcionLlantaInput').value = '';
+             document.getElementById('pedidoLineaLlanta').innerText = '';
+             document.getElementById('pedidoPesoLlanta').innerText = '0';
+             document.getElementById('pedidoVolumenLlanta').innerText = '0';
+             document.getElementById('pedidoValorUnitarioLlanta').innerText = '0';
+        }
+    }
+    function autoCompletarLlantaPedidoPorDescripcion() {
+        const descripcion = document.getElementById('pedidoDescripcionLlantaInput').value.trim().toLowerCase();
+        const llanta = inventario.find(item => item.descripcion.toLowerCase() === descripcion);
+        if (llanta) {
+            document.getElementById('pedidoCodigoLlanta').value = llanta.clave;
+            document.getElementById('pedidoLineaLlanta').innerText = llanta.linea || '';
+            document.getElementById('pedidoCantidadLlanta').value = 1;
+            document.getElementById('pedidoPesoLlanta').innerText = Number(llanta.peso).toLocaleString('es-MX', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+            document.getElementById('pedidoVolumenLlanta').innerText = Number(llanta.volumen).toLocaleString('es-MX', {minimumFractionDigits: 4, maximumFractionDigits: 4});
+            document.getElementById('pedidoValorUnitarioLlanta').innerText = Number(llanta.valor).toLocaleString('es-MX', {minimumFractionDigits: 2, maximumFractionDigits: 2}); 
+        } else {
+             document.getElementById('pedidoDescripcionLlantaInput').value = '';
+             document.getElementById('pedidoLineaLlanta').innerText = '';
+             document.getElementById('pedidoPesoLlanta').innerText = '0';
+             document.getElementById('pedidoVolumenLlanta').innerText = '0';
+             document.getElementById('pedidoValorUnitarioLlanta').innerText = '0';
         }
     }
     function calcularTotalesPedido() {
@@ -979,13 +1003,13 @@ function searchInventario() {
             datasets: [{ data: [0, 100], backgroundColor: ['#7ad4a2', '#f3f3f3'], borderWidth: 1 }]
         },
         options: { plugins: {legend: {display: true}}, cutout: '70%' }
-    });
+    });   
     function actualizarGraficas() {
         if (!pedidoCamion) {
             chartVolumen.data.datasets[0].data = [0, 100];
             chartCarga.data.datasets[0].data = [0, 100];
         } else {
-            let totalVolumen = pedidosEnCurso.reduce((acc, cur) => acc + cur.volumen, 0);
+            let totalVolumen = pedidosEnCCurso.reduce((acc, cur) => acc + cur.volumen, 0);
             let totalPeso = pedidosEnCurso.reduce((acc, cur) => acc + cur.peso, 0);
             let volTotal = +pedidoCamion["volumen"];
             let pesoTotal = +pedidoCamion["capacidad de carga (kg)"];
@@ -1010,7 +1034,7 @@ function verificarCapacidad(volumen, peso) {
     }
 
     if (volumenPercent > 80 || pesoPercent > 80) {
-        if (confirm('El camión se está llenando (>80%), ¿desea completar con otro camión?')) {
+        if (confirm('El camión se está llenando (>85%), ¿desea completar con otro camión?')) {
             alert('Aquí puedes permitir solicitar otro camión para continuar cargando los pedidos.');
         }
     }
@@ -1052,7 +1076,7 @@ function verificarCapacidad(volumen, peso) {
                 body: JSON.stringify({ data: nuevoPedido })
             });
             if (!res.ok) throw new Error('Error al guardar el pedido confirmado en la hoja de cálculo');
-            
+
             pedidosConfirmados.push(nuevoPedido);
             pedidosEnCurso = [];
             pedidoCamion = null;
@@ -1060,7 +1084,7 @@ function verificarCapacidad(volumen, peso) {
             document.getElementById('inputPedidoNumEconomico').value = '';
             renderPedidosActuales();
             actualizarGraficas();
-            alert('Pedido aceptado y guardado en pedidos confirmados.');
+            alert('Pedido aceptado y guardado en pedidos confirmados.');   c
             renderPedidosConfirmados();
         } catch (error) {
             alert('Error al guardar el pedido confirmado: ' + error.message);
