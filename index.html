@@ -457,7 +457,7 @@ z    }
     // ---------- Funciones para cargar datos ---------
     async function fetchInventario() {
         try {
-            const res = await fetch('https://sheetdb.io/api/v1/cz5zxp3959aew');
+            const res = await fetch('https://sheetdb.io/api/v1/lttpt3mvohen7');
             if (!res.ok) throw new Error('Error al cargar inventario');
             inventario = await res.json();
             renderInventario();
@@ -467,7 +467,7 @@ z    }
     }
     async function fetchFlota() {
         try {
-            const res = await fetch('https://sheetdb.io/api/v1/cz5zxp3959aew?sheet=flota');
+            const res = await fetch('https://sheetdb.io/api/v1/lttpt3mvohen7?sheet=flota');
             if (!res.ok) throw new Error('Error al cargar flota');
             flota = await res.json();
             renderFlota();
@@ -481,7 +481,7 @@ z    }
     // Función para cargar pedidos confirmados desde hoja
     async function fetchPedidosConfirmados() {
         try {
-            const res = await fetch('https://sheetdb.io/api/v1/cz5zxp3959aew?sheet=confirmados');
+            const res = await fetch('https://sheetdb.io/api/v1/lttpt3mvohen7?sheet=confirmados');
             if (!res.ok) throw new Error('Error al cargar pedidos confirmados');
             pedidosConfirmados = await res.json();
             renderPedidosConfirmados();
@@ -531,7 +531,7 @@ z    }
    async function eliminarLlanta(clave) {
      if (!confirm('¿Seguro que deseas eliminar esta llanta?')) return;
      try {
-       const res = await fetch(`https://sheetdb.io/api/v1/cz5zxp3959aew/clave/${clave}`, {
+       const res = await fetch(`https://sheetdb.io/api/v1/lttpt3mvohen7/clave/${clave}`, {
          method: 'DELETE'
       });
       if (!res.ok) throw new Error('No se pudo eliminar');
@@ -569,7 +569,7 @@ async function guardarEdicionLlanta(clave) {
     valor: document.getElementById('editValor').value
   };
   try {
-    const res = await fetch(`https://sheetdb.io/api/v1/cz5zxp3959aew/clave/${clave}`, {
+    const res = await fetch(`https://sheetdb.io/api/v1/lttpt3mvohen7/clave/${clave}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ data: nuevosDatos })
@@ -646,7 +646,7 @@ function searchInventario() {
         const nuevoDato = { id, descripcion, peso, volumen, valor, "Línea": Línea };
 
         try {
-            const res = await fetch('https://sheetdb.io/api/v1/cz5zxp3959aew', {
+            const res = await fetch('https://sheetdb.io/api/v1/lttpt3mvohen7', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ data: nuevoDato })
@@ -709,7 +709,7 @@ function searchInventario() {
      async function eliminarCamion(economico) {
        if (!confirm('¿Seguro que deseas eliminar este camión?')) return;
        try {
-         const res = await fetch(`https://sheetdb.io/api/v1/cz5zxp3959aew/economico/${economico}?sheet=flota`, {
+         const res = await fetch(`https://sheetdb.io/api/v1/lttpt3mvohen7/economico/${economico}?sheet=flota`, {
            method: 'DELETE'
          });
          if (!res.ok) throw new Error('No se pudo eliminar');
@@ -742,7 +742,7 @@ function searchInventario() {
         peso: document.getElementById('editCamionPeso').value
       };
       try {
-        const res = await fetch(`https://sheetdb.io/api/v1/cz5zxp3959aew/economico/${economico}?sheet=flota`, {
+        const res = await fetch(`https://sheetdb.io/api/v1/lttpt3mvohen7/economico/${economico}?sheet=flota`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ data: nuevosDatos })
@@ -810,7 +810,7 @@ function searchInventario() {
         };
 
         try {
-            const res = await fetch('https://sheetdb.io/api/v1/cz5zxp3959aew?sheet=flota', {
+            const res = await fetch('https://sheetdb.io/api/v1/lttpt3mvohen7?sheet=flota', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ data: nuevoDato })
@@ -1070,7 +1070,7 @@ function verificarCapacidad(volumen, peso) {
         };
 
         try {
-            const res = await fetch('https://sheetdb.io/api/v1/cz5zxp3959aew?sheet=confirmados', {
+            const res = await fetch('https://sheetdb.io/api/v1/lttpt3mvohen7?sheet=confirmados', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ data: nuevoPedido })
