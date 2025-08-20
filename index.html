@@ -531,7 +531,7 @@ z    }
    async function eliminarLlanta(clave) {
      if (!confirm('¿Seguro que deseas eliminar esta llanta?')) return;
      try {
-       const res = await fetch(`https://sheetdb.io/api/v1/lttpt3mvohen7/clave/${clave}`, {
+       const res = await fetch(`https://sheetdb.io/api/v1/cz5zxp3959aew/clave/${clave}`, {
          method: 'DELETE'
       });
       if (!res.ok) throw new Error('No se pudo eliminar');
