@@ -336,9 +336,9 @@
         <div>
             <label for="inputPedidoNumEconomico">Número Económico Camión:</label>
             <input type="text" id="inputPedidoNumEconomico" oninput="llenarDatosCamionPedido()" placeholder="Ingrese número económico" />
-        </div>
+        </div>                
         <div id="datosCamionPedido" style="margin-top:10px; font-weight:bold; min-height: 50px;"></div>
-
+          
         <div style="margin-top: 20px;">
             <div class="graph-container">
                 <canvas id="graphVolumen" width="400" height="250"></canvas>
@@ -765,10 +765,10 @@ function searchInventario() {
             row.style.display = idCell.includes(filter) ? '' : 'none';
             if (idCell.includes(filter) && filter) {
                 row.classList.add('highlight-yellow');
-                setTimeout(() => row.classList.remove('highlight-yellow'), 1100);
+                setTTimeout(() => row.classList.remove('highlight-yellow'), 1100);
             }
         }
-    }
+    }    
 
     // ---------- Agregar nuevo camión a SheetDB ----------
     async function agregarNuevoCamion() {
@@ -1004,17 +1004,18 @@ function searchInventario() {
         },
         options: { plugins: {legend: {display: true}}, cutout: '70%' }
     });   
+  
     function actualizarGraficas() {
         if (!pedidoCamion) {
             chartVolumen.data.datasets[0].data = [0, 100];
             chartCarga.data.datasets[0].data = [0, 100];
         } else {
-            let totalVolumen = pedidosEnCCurso.reduce((acc, cur) => acc + cur.volumen, 0);
-            let totalPeso = pedidosEnCurso.reduce((acc, cur) => acc + cur.peso, 0);
-            let volTotal = +pedidoCamion["volumen"];
-            let pesoTotal = +pedidoCamion["capacidad de carga (kg)"];
-            chartVolumen.data.datasets[0].data = [Math.min(totalVolumen, volTotal), Math.max(0, volTotal - totalVolumen)];
-            chartCarga.data.datasets[0].data = [Math.min(totalPeso, pesoTotal), Math.max(0, pesoTotal - totalPeso)];
+             let totalVolumen = pedidosEnCurso.reduce((acc, cur) => acc + cur.volumen, 0); // CORREGIDO
+             let totalPeso = pedidosEnCurso.reduce((acc, cur) => acc + cur.peso, 0);
+             let volTotal = +pedidoCamion["volumen"];
+             let pesoTotal = +pedidoCamion["capacidad de carga (kg)"];
+             chartVolumen.data.datasets[0].data = [Math.min(totalVolumen, volTotal), Math.max(0, volTotal - totalVolumen)];
+             chartCarga.data.datasets[0].data = [Math.min(totalPeso, pesoTotal), Math.max(0, pesoTotal - totalPeso)];
         }
         chartVolumen.update(); chartCarga.update();
     }
@@ -1116,7 +1117,7 @@ function verificarCapacidad(volumen, peso) {
                 <td>${pedido.fecha || ''}</td>
                 <td><button onclick="cancelarPedido(${idx})">Cancelar</button></td>`;
             tbody.appendChild(tr);
-        });
+        }); 
     }
     function cancelarPedido(idx) {
         if (confirm('¿Seguro que desea cancelar este pedido?')) {
@@ -1127,7 +1128,7 @@ function verificarCapacidad(volumen, peso) {
         }
     }
 </script>
-
+   
 <!-- Modal instrucciones -->
 <div id="modalInstrucciones" class="modal">
   <div class="modal-content" style="max-width: 500px; padding: 20px;">
