@@ -870,7 +870,7 @@ function searchInventario() {
             document.getElementById('pedidoLineaLlanta').innerText = llanta.linea || '';
             document.getElementById('pedidoCantidadLlanta').value = 1;
             document.getElementById('pedidoPesoLlanta').innerText = Number(llanta.peso).toLocaleString('es-MX', {minimumFractionDigits: 2, maximumFractionDigits: 2});
-            document.getElementById('pedidoVolumenLlanta').innerText = Number(llanta.volumen).toLocaleString('es-MX', {minimumFractionDigits: 4, maximumFractionDigits: 4});
+            document.getElementById('pedidoVolumenLlanta').innerText = Number(llanta.volumen).toLocaleString('es-MX', {minimumFractionDigits: 3, maximumFractionDigits: 3});
             document.getElementById('pedidoValorUnitarioLlanta').innerText = Number(llanta.valor).toLocaleString('es-MX', {minimumFractionDigits: 2, maximumFractionDigits: 2}); 
         } else {
              document.getElementById('pedidoDescripcionLlantaInput').value = '';
@@ -888,7 +888,7 @@ function searchInventario() {
             document.getElementById('pedidoLineaLlanta').innerText = llanta.linea || '';
             document.getElementById('pedidoCantidadLlanta').value = 1;
             document.getElementById('pedidoPesoLlanta').innerText = Number(llanta.peso).toLocaleString('es-MX', {minimumFractionDigits: 2, maximumFractionDigits: 2});
-            document.getElementById('pedidoVolumenLlanta').innerText = Number(llanta.volumen).toLocaleString('es-MX', {minimumFractionDigits: 4, maximumFractionDigits: 4});
+            document.getElementById('pedidoVolumenLlanta').innerText = Number(llanta.volumen).toLocaleString('es-MX', {minimumFractionDigits: 3, maximumFractionDigits: 3});
             document.getElementById('pedidoValorUnitarioLlanta').innerText = Number(llanta.valor).toLocaleString('es-MX', {minimumFractionDigits: 2, maximumFractionDigits: 2}); 
         } else {
              document.getElementById('pedidoDescripcionLlantaInput').value = '';
@@ -945,20 +945,38 @@ function searchInventario() {
         actualizarGraficas();
         resetPedidoInputs();
     }
-    function renderPedidosActuales() {
-        const tbody = document.querySelector('#tablaPedidosActuales tbody');
-        tbody.innerHTML = '';
-        pedidosEnCurso.forEach((pedido, idx) => {
-            const tr = document.createElement('tr');
-            tr.innerHTML = `
-                <td>${pedido.clave}</td>
-                <td>${pedido.descripcion}</td>
-                <td>${pedido.linea || ''}</td> 
-                <td>${pedido.cantidad}</td>
-                <td>${pedido.volumen.toFixed(4)}</td>
-                <td>${pedido.peso.toFixed(2)}</td>
-                <td>${pedido.valor.toLocaleString('es-MX', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
-                <td><button onclick="quitarPedido(${idx})">Quitar</button></td>
+    function editarPedido(idx) {
+        const pedido = pedidosEnCurso[idx];
+        const nuevaCantidad = parseInt(prompt(`Editar cantidad para ${pedido.descripcion}:`, pedido.cantidad));
+        if (isNaN(nuevaCantidad) || nuevaCantidad <= 0) return;
+
+        // Actualiza los valores
+        const llanta = inventario.find(item => item.clave.toString() === pedido.clave);
+        pedido.cantidad = nuevaCantidad;
+        pedido.peso = (+llanta.peso) * nuevaCantidad;
+        pedido.volumen = (+llanta.volumen) * nuevaCantidad;
+        pedido.valor = (+llanta.valor) * nuevaCantidad;
+
+        renderPedidosActuales();
+        actualizarGraficas();
+    }
+   function renderPedidosActuales() {
+       const tbody = document.querySelector('#tablaPedidosActuales tbody');
+       tbody.innerHTML = '';
+       pedidosEnCurso.forEach((pedido, idx) => {
+           const tr = document.createElement('tr');
+           tr.innerHTML = `
+               <td>${pedido.clave}</td>
+               <td>${pedido.descripcion}</td>
+               <td>${pedido.linea || ''}</td> 
+               <td>${pedido.cantidad}</td>
+               <td>${pedido.volumen.toFixed(3)}</td>
+               <td>${pedido.peso.toFixed(3)}</td>
+               <td>${pedido.valor.toLocaleString('es-MX', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+               <td>
+                   <button onclick="editarPedido(${idx})">Editar</button>
+                   <button onclick="quitarPedido(${idx})">Quitar</button>
+               </td>
             `;
             tbody.appendChild(tr);
         });
@@ -970,13 +988,8 @@ function searchInventario() {
             totalValor += p.valor;
         });
         document.getElementById('totalesPedido').innerText = 
-          `Total cantidad: ${totalCantidad} | Total volumen: ${totalVolumen.toFixed(4)} m³ | Total peso: ${totalPeso.toFixed(2)} kg | Total valor: $${totalValor.toFixed(2)}`;
-        verificarCapacidad(totalVolumen, totalPeso);
-    }
-    function quitarPedido(idx) {
-        pedidosEnCurso.splice(idx, 1);
-        renderPedidosActuales();
-        actualizarGraficas();
+          `Total cantidad: ${totalCantidad} | Total volumen: ${totalVolumen.toFixed(3)} m³ | Total peso: ${totalPeso.toFixed(3)} kg | Total valor: $${totalValor.toFixed(2)}`;
+         verificarCapacidad(totalVolumen, totalPeso);
     }
     function resetPedidoInputs() {
         document.getElementById('pedidoCodigoLlanta').value = '';
