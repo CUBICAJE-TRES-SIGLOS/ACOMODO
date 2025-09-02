@@ -720,26 +720,27 @@ function searchInventario() {
          alert('Error al eliminar: ' + error.message);
        }
      } 
-     function editarCamion(economico) {
+    function editarCamion(economico) {
         const camion = flota.find(item => item.economico === economico);
         document.getElementById('modalFlota').innerHTML = `
           <div class="modal-content">
-          <h3>Editar Camión</h3>
-          <label>Descripción: <input id="editCamionDescripcion" value="${camion.descripcion}" /></label><br>
-          <label>Volumen: <input id="editCamionVolumen" type="number" step="0.0001" value="${camion.volumen}" /></label><br>
-          <label>Peso: <input id="editCamionPeso" type="number" step="0.0001" value="${camion.peso}" /></label><br>
-          <button onclick="guardarEdicionCamion('${camion.economico}')">Guardar</button>
-          <button onclick="closeModal('modalFlota')">Cancelar</button>
-        </div>
-      `;
-      openModal('modalFlota');
-   }
+            <h3>Editar Camión</h3>
+            <label>Número Económico: <input id="editCamionEconomico" value="${camion.economico}" readonly /></label><br>
+            <label>Nombre (Unidad): <input id="editCamionUnidad" value="${camion.unidad || ''}" /></label><br>
+            <label>Capacidad de carga (kg): <input id="editCamionCarga" type="number" step="0.001" value="${camion['capacidad de carga (kg)'] || camion.carga || ''}" /></label><br>
+            <label>Volumen (m³): <input id="editCamionVolumen" type="number" step="0.001" value="${camion.volumen || ''}" /></label><br>
+            <button onclick="guardarEdicionCamion('${camion.economico}')">Guardar</button>
+            <button onclick="closeModal('modalFlota')">Cancelar</button>
+          </div>
+        `;
+        openModal('modalFlota');
+    }
 
     async function guardarEdicionCamion(economico) {
       const nuevosDatos = {
-        descripcion: document.getElementById('editCamionDescripcion').value,
-        volumen: document.getElementById('editCamionVolumen').value,
-        peso: document.getElementById('editCamionPeso').value
+        unidad: document.getElementById('editCamionUnidad').value,
+        "capacidad de carga (kg)": document.getElementById('editCamionCarga').value,
+        volumen: document.getElementById('editCamionVolumen').value
       };
       try {
         const res = await fetch(`https://sheetdb.io/api/v1/lttpt3mvohen7/economico/${economico}?sheet=flota`, {
@@ -756,19 +757,7 @@ function searchInventario() {
       } catch (error) {          
         alert('Error al editar: ' + error.message);
       }
-    }    
-    function searchFlota() {
-        const filter = document.getElementById('searchFlota').value.toLowerCase();
-        const tbody = document.querySelector('#tablaFlota tbody');
-        for (let row of tbody.rows) {
-            const idCell = row.cells[0].textContent.toLowerCase(); 
-            row.style.display = idCell.includes(filter) ? '' : 'none';
-            if (idCell.includes(filter) && filter) {
-                row.classList.add('highlight-yellow');
-                setTTimeout(() => row.classList.remove('highlight-yellow'), 1100);
-            }
-        }
-    }    
+    }
 
     // ---------- Agregar nuevo camión a SheetDB ----------
     async function agregarNuevoCamion() {
@@ -944,7 +933,7 @@ function searchInventario() {
         renderPedidosActuales();
         actualizarGraficas();
         resetPedidoInputs();
-    }
+    }                   
     function editarPedido(idx) {
         const pedido = pedidosEnCurso[idx];
         const nuevaCantidad = parseInt(prompt(`Editar cantidad para ${pedido.descripcion}:`, pedido.cantidad));
@@ -1141,7 +1130,7 @@ function verificarCapacidad(volumen, peso) {
         }
     }
 </script>
-   
+         
 <!-- Modal instrucciones -->
 <div id="modalInstrucciones" class="modal">
   <div class="modal-content" style="max-width: 500px; padding: 20px;">
