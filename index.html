@@ -468,19 +468,25 @@
             </div>
             <div class="mb-3">
               <label for="facturaPdfInput" class="form-label">Selecciona tu archivo PDF de factura</label>
-              <input type="file" id="facturaPdfInput" accept="application/pdf" class="form-control">
+              <input type="file" id="facturaPdfInput" accept="application/pdf" class="form-control" multiple>
             </div>
             <button id="facturaScanBtn" class="btn btn-gradient w-100 mb-3">
               <i class="bi bi-search"></i> Escanear y extraer texto
             </button>
-             <button id="facturaClearBtn" class="btn btn-outline-danger w-100 mb-3">
-               <i class="bi bi-x-circle"></i> Limpiar
-             </button>
+            <button id="facturaClearBtn" class="btn btn-outline-danger w-100 mb-3">
+              <i class="bi bi-x-circle"></i> Limpiar
+            </button>
             <div id="facturaLoading" class="text-center" style="display:none;">
               <div class="spinner-border text-info"></div>
               <p>Procesando...</p>
             </div>
             <div id="facturaResult" class="mt-3" style="white-space:pre-wrap; background:#f7f7f7; border-radius:8px; padding:16px; min-height:80px;"></div>
+            <!-- Aquí va el contenedor de grupos -->
+             <!-- Justo antes de <div id="facturaGroupsContainer"></div> -->
+            <div class="mb-3">
+              <input type="text" id="facturaSearchFolio" class="form-control" placeholder="Buscar por número de folio..." oninput="buscarFolioFactura()" />
+            </div>
+            <div id="facturaGroupsContainer"></div>
           </div>
         </div>
       </div>
@@ -1237,90 +1243,171 @@ function verificarCapacidad(volumen, peso) {
 };
 
     // Reemplaza la parte final del escaneo de factura por esto:
+let facturaGroupLocked = false;
+let facturaGroupName = '';
+let facturaAllHtml = '';
+let primerFolioGlobal = '';
+
 facturaScanBtn.onclick = async () => {
+    if (facturaGroupLocked) return; // No permitir si está bloqueado
+
     facturaResultDiv.textContent = '';
-    if (!facturaPdfInput.files[0]) {
-        alert('Por favor, selecciona un archivo PDF.');
+    const files = Array.from(facturaPdfInput.files).slice(0, 7); // máximo 7 archivos
+    if (files.length === 0) {
+        alert('Por favor, selecciona hasta 7 archivos PDF.');
         return;
     }
     facturaLoadingDiv.style.display = 'block';
 
-    const file = facturaPdfInput.files[0];
-    const reader = new FileReader();
-    reader.onload = async function() {
-        const typedarray = new Uint8Array(this.result);
-        const pdf = await pdfjsLib.getDocument(typedarray).promise;
-        let extractedText = '';
+    let allHtml = facturaAllHtml || '';
+    let primerFolio = primerFolioGlobal || '';
+    for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        const reader = new FileReader();
+        await new Promise(resolve => {
+            reader.onload = async function() {
+                const typedarray = new Uint8Array(this.result);
+                const pdf = await pdfjsLib.getDocument(typedarray).promise;
+                let extractedText = '';
 
-        for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
-            const page = await pdf.getPage(pageNum);
-            const viewport = page.getViewport({ scale: 2 });
-            const canvas = document.createElement('canvas');
-            const context = canvas.getContext('2d');
-            canvas.width = viewport.width;
-            canvas.height = viewport.height;
+                for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+                    const page = await pdf.getPage(pageNum);
+                    const viewport = page.getViewport({ scale: 2 });
+                    const canvas = document.createElement('canvas');
+                    const context = canvas.getContext('2d');
+                    canvas.width = viewport.width;
+                    canvas.height = viewport.height;
 
-            await page.render({ canvasContext: context, viewport: viewport }).promise;
-            const dataUrl = canvas.toDataURL();
+                    await page.render({ canvasContext: context, viewport: viewport }).promise;
+                    const dataUrl = canvas.toDataURL();
 
-            const { data: { text } } = await Tesseract.recognize(dataUrl, 'spa', {
-                logger: m => {
-                    facturaLoadingDiv.innerHTML = `<div class="spinner-border text-info"></div><p>${m.status}: ${Math.round(m.progress*100)}%</p>`;
+                    const { data: { text } } = await Tesseract.recognize(dataUrl, 'spa', {
+                        logger: m => {
+                            facturaLoadingDiv.innerHTML = `<div class="spinner-border text-info"></div><p>PDF ${i+1} - ${m.status}: ${Math.round(m.progress*100)}%</p>`;
+                        }
+                    });
+                    extractedText += text + '\n';
                 }
-            });
-            extractedText += text + '\n';
-        }
 
-        // Extraer datos únicos (basado en tu imagen)
-        const folio = (extractedText.match(/FOLIO\s*[:\-]?\s*([A-Za-z0-9\-]+)/i) || [])[1] || '';
-        const fecha = (extractedText.match(/FECHA DE EMISION\s*[:\-]?\s*([0-9\/\:\. ]+)/i) || [])[1] || '';
-        const usuario = (extractedText.match(/USUARIO\s*[:\-]?\s*([A-Za-z\s]+)/i) || [])[1] || '';
+                // Extraer datos únicos
+                const folio = (extractedText.match(/FOLIO\s*[:\-]?\s*([A-Za-z0-9\-]+)/i) || [])[1] || '';
+                if (!primerFolio) primerFolio = folio || 'SinFolio';
 
-        // Extraer productos (líneas tipo: cantidad código descripción)
-        // Ejemplo línea: 4 1557013BBHH11VT 155 70 R13 BLACKHAWK HH11 VT 75T
-        const productoRegex = /^(\d+)\s+([A-Za-z0-9]+)\s+(.+)$/gm;
-        let productos = [];
-        let match;
-        while ((match = productoRegex.exec(extractedText)) !== null) {
-            productos.push({
-                cantidad: match[1],
-                codigo: match[2],
-                descripcion: match[3].trim()
-            });
-        }
+                const fecha = (extractedText.match(/FECHA DE EMISION\s*[:\-]?\s*([0-9\/\:\. ]]+)/i) || [])[1] || '';
+                const usuario = (extractedText.match(/USUARIO\s*[:\-]?\s*([A-Za-z\s]+)/i) || [])[1] || '';
 
-        // Construir la tabla
-        let html = `
-            <table class="table table-bordered">
-                <thead>
-                    <tr>
-                        <th>Folio</th>
-                        <th>Fecha de Emisión</th>
-                        <th>Usuario</th>
-                        <th>Cantidad</th>
-                        <th>Código</th>
-                        <th>Descripción</th>
-                    </tr>
-                </thead>
-                <tbody>
-        `;
-        productos.forEach((p, idx) => {
-            html += `<tr>
-                <td>${idx === 0 ? folio : ''}</td>
-                <td>${idx === 0 ? fecha : ''}</td>
-                <td>${idx === 0 ? usuario : ''}</td>
-                <td>${p.cantidad}</td>
-                <td>${p.codigo}</td>
-                <td>${p.descripcion}</td>
-            </tr>`;
+                // Extraer productos
+                const productoRegex = /^(\d+)\s+([A-Za-z0-9]+)\s+(.+)$/gm;
+                let productos = [];
+                let match;
+                while ((match = productoRegex.exec(extractedText)) !== null) {
+                    productos.push({
+                        cantidad: match[1],
+                        codigo: match[2],
+                        descripcion: match[3].trim()
+                    });
+                }
+
+                // Construir la tabla para este PDF
+                let html = `
+                    <h5 class="mt-4 mb-2">Archivo: ${file.name}</h5>
+                    <table class="table table-bordered">
+                        <thead>
+                            <tr>
+                                <th>Folio</th>
+                                <th>Fecha de Emisión</th>
+                                <th>Usuario</th>
+                                <th>Cantidad</th>
+                                <th>Código</th>
+                                <th>Descripción</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                `;
+                productos.forEach((p, idx) => {
+                    html += `<tr>
+                        <td>${idx === 0 ? folio : ''}</td>
+                        <td>${idx === 0 ? fecha : ''}</td>
+                        <td>${idx === 0 ? usuario : ''}</td>
+                        <td>${p.cantidad}</td>
+                        <td>${p.codigo}</td>
+                        <td>${p.descripcion}</td>
+                    </tr>`;
+                });
+                html += '</tbody></table>';
+                allHtml += html;
+                resolve();
+            };
+            reader.readAsArrayBuffer(file);
         });
-        html += '</tbody></table>';
+    }
+    facturaLoadingDiv.style.display = 'none';
 
-        facturaLoadingDiv.style.display = 'none';
-        facturaResultDiv.innerHTML = html;
-    };
-    reader.readAsArrayBuffer(file);
-};  
+    // Guardar para futuras ediciones
+    facturaAllHtml = allHtml;
+    primerFolioGlobal = primerFolio;
+
+    // Mostrar controles de grupo
+    facturaResultDiv.innerHTML = `
+        <div id="facturaGroupHeader" class="mb-3">
+            <label>Nombre del grupo de datos:</label>
+            <input type="text" id="facturaGroupName" class="form-control mb-2" value="${facturaGroupName || primerFolio}">
+            <div class="d-flex gap-2">
+                <button id="facturaTerminarBtn" class="btn btn-success">Terminado</button>
+                <button id="facturaEditarBtn" class="btn btn-secondary">Editar</button>
+            </div>
+        </div>
+        <div id="facturaTables">${allHtml}</div>
+    `;
+
+    // Terminar: bloquea todo
+   document.getElementById('facturaTerminarBtn').onclick = () => {
+    facturaGroupLocked = true;
+    const groupName = document.getElementById('facturaGroupName').value || primerFolioGlobal || 'Sin nombre';
+    // Clona el bloque actual y lo agrega al contenedor general
+    const groupDiv = document.createElement('div');
+    groupDiv.className = 'mb-4';
+    groupDiv.innerHTML = `
+        <div class="alert alert-info d-flex justify-content-between align-items-center">
+            <strong>Grupo: ${groupName}</strong>
+            <span class="badge bg-success">Cerrado</span>
+        </div>
+        <div>${document.getElementById('facturaTables').innerHTML}</div>
+    `;
+    document.getElementById('facturaGroupsContainer').prepend(groupDiv);
+
+    // Limpia controles para permitir nuevo escaneo
+    facturaResultDiv.textContent = '';
+    facturaPdfInput.value = '';
+    facturaPdfInput.disabled = false;
+    facturaScanBtn.disabled = false;
+    facturaGroupLocked = false;
+    facturaAllHtml = '';
+    primerFolioGlobal = '';
+    facturaGroupName = '';
+};
+};
+function buscarFolioFactura() {
+    const folio = document.getElementById('facturaSearchFolio').value.trim().toLowerCase();
+    const container = document.getElementById('facturaGroupsContainer');
+    const groups = Array.from(container.children);
+
+    let found = false;
+    groups.forEach(group => {
+        // Busca el folio en el texto del grupo
+        const folioText = group.querySelector('strong')?.textContent?.toLowerCase() || '';
+        if (folio && folioText.includes(folio)) {
+            group.classList.add('highlight-yellow');
+            container.prepend(group); // Mueve el grupo al principio
+            found = true;
+            setTimeout(() => group.classList.remove('highlight-yellow'), 1200);
+        }
+    });
+
+    if (!found && folio) {
+        // Opcional: puedes mostrar un mensaje si no se encuentra
+        // alert('No se encontró ese folio.');
+    }
+}
 </script>
 </body>
-</html>
