@@ -473,6 +473,9 @@
             <button id="facturaScanBtn" class="btn btn-gradient w-100 mb-3">
               <i class="bi bi-search"></i> Escanear y extraer texto
             </button>
+             <button id="facturaClearBtn" class="btn btn-outline-danger w-100 mb-3">
+               <i class="bi bi-x-circle"></i> Limpiar
+             </button>
             <div id="facturaLoading" class="text-center" style="display:none;">
               <div class="spinner-border text-info"></div>
               <p>Procesando...</p>
@@ -1226,6 +1229,12 @@ function verificarCapacidad(volumen, peso) {
     const facturaScanBtn = document.getElementById('facturaScanBtn');
     const facturaResultDiv = document.getElementById('facturaResult');
     const facturaLoadingDiv = document.getElementById('facturaLoading');
+    const facturaClearBtn = document.getElementById('facturaClearBtn');
+    facturaClearBtn.onclick = () => {
+    facturaPdfInput.value = '';
+    facturaResultDiv.textContent = '';
+    facturaLoadingDiv.style.display = 'none';
+};
 
     facturaScanBtn.onclick = async () => {
         facturaResultDiv.textContent = '';
