@@ -1236,44 +1236,91 @@ function verificarCapacidad(volumen, peso) {
     facturaLoadingDiv.style.display = 'none';
 };
 
-    facturaScanBtn.onclick = async () => {
-        facturaResultDiv.textContent = '';
-        if (!facturaPdfInput.files[0]) {
-            alert('Por favor, selecciona un archivo PDF.');
-            return;
+    // Reemplaza la parte final del escaneo de factura por esto:
+facturaScanBtn.onclick = async () => {
+    facturaResultDiv.textContent = '';
+    if (!facturaPdfInput.files[0]) {
+        alert('Por favor, selecciona un archivo PDF.');
+        return;
+    }
+    facturaLoadingDiv.style.display = 'block';
+
+    const file = facturaPdfInput.files[0];
+    const reader = new FileReader();
+    reader.onload = async function() {
+        const typedarray = new Uint8Array(this.result);
+        const pdf = await pdfjsLib.getDocument(typedarray).promise;
+        let extractedText = '';
+
+        for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+            const page = await pdf.getPage(pageNum);
+            const viewport = page.getViewport({ scale: 2 });
+            const canvas = document.createElement('canvas');
+            const context = canvas.getContext('2d');
+            canvas.width = viewport.width;
+            canvas.height = viewport.height;
+
+            await page.render({ canvasContext: context, viewport: viewport }).promise;
+            const dataUrl = canvas.toDataURL();
+
+            const { data: { text } } = await Tesseract.recognize(dataUrl, 'spa', {
+                logger: m => {
+                    facturaLoadingDiv.innerHTML = `<div class="spinner-border text-info"></div><p>${m.status}: ${Math.round(m.progress*100)}%</p>`;
+                }
+            });
+            extractedText += text + '\n';
         }
-        facturaLoadingDiv.style.display = 'block';
 
-        const file = facturaPdfInput.files[0];
-        const reader = new FileReader();
-        reader.onload = async function() {
-            const typedarray = new Uint8Array(this.result);
-            const pdf = await pdfjsLib.getDocument(typedarray).promise;
-            let extractedText = '';
+        // Extraer datos únicos (basado en tu imagen)
+        const folio = (extractedText.match(/FOLIO\s*[:\-]?\s*([A-Za-z0-9\-]+)/i) || [])[1] || '';
+        const fecha = (extractedText.match(/FECHA DE EMISION\s*[:\-]?\s*([0-9\/\:\. ]+)/i) || [])[1] || '';
+        const usuario = (extractedText.match(/USUARIO\s*[:\-]?\s*([A-Za-z\s]+)/i) || [])[1] || '';
 
-            for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
-                const page = await pdf.getPage(pageNum);
-                const viewport = page.getViewport({ scale: 2 });
-                const canvas = document.createElement('canvas');
-                const context = canvas.getContext('2d');
-                canvas.width = viewport.width;
-                canvas.height = viewport.height;
+        // Extraer productos (líneas tipo: cantidad código descripción)
+        // Ejemplo línea: 4 1557013BBHH11VT 155 70 R13 BLACKHAWK HH11 VT 75T
+        const productoRegex = /^(\d+)\s+([A-Za-z0-9]+)\s+(.+)$/gm;
+        let productos = [];
+        let match;
+        while ((match = productoRegex.exec(extractedText)) !== null) {
+            productos.push({
+                cantidad: match[1],
+                codigo: match[2],
+                descripcion: match[3].trim()
+            });
+        }
 
-                await page.render({ canvasContext: context, viewport: viewport }).promise;
-                const dataUrl = canvas.toDataURL();
+        // Construir la tabla
+        let html = `
+            <table class="table table-bordered">
+                <thead>
+                    <tr>
+                        <th>Folio</th>
+                        <th>Fecha de Emisión</th>
+                        <th>Usuario</th>
+                        <th>Cantidad</th>
+                        <th>Código</th>
+                        <th>Descripción</th>
+                    </tr>
+                </thead>
+                <tbody>
+        `;
+        productos.forEach((p, idx) => {
+            html += `<tr>
+                <td>${idx === 0 ? folio : ''}</td>
+                <td>${idx === 0 ? fecha : ''}</td>
+                <td>${idx === 0 ? usuario : ''}</td>
+                <td>${p.cantidad}</td>
+                <td>${p.codigo}</td>
+                <td>${p.descripcion}</td>
+            </tr>`;
+        });
+        html += '</tbody></table>';
 
-                const { data: { text } } = await Tesseract.recognize(dataUrl, 'spa', {
-                    logger: m => {
-                        facturaLoadingDiv.innerHTML = `<div class="spinner-border text-info"></div><p>${m.status}: ${Math.round(m.progress*100)}%</p>`;
-                    }
-                });
-                extractedText += `--- Página ${pageNum} ---\n${text}\n\n`;
-            }
-            facturaLoadingDiv.style.display = 'none';
-            facturaResultDiv.textContent = extractedText;
-        };
-        reader.readAsArrayBuffer(file);
+        facturaLoadingDiv.style.display = 'none';
+        facturaResultDiv.innerHTML = html;
     };
+    reader.readAsArrayBuffer(file);
+};  
 </script>
 </body>
 </html>
