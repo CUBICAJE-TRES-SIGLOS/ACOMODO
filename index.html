@@ -385,7 +385,10 @@
         <div style="margin-bottom: 10px;">
              <label for="inputFolioFacturaPedido"><b>Folio de Factura (autoagregar bloque):</b></label>
              <input type="text" id="inputFolioFacturaPedido" placeholder="Escribe el folio y presiona Enter" onkeydown="if(event.key==='Enter'){agregarBloquePorFolioPedido();return false;}" style="margin-left:8px;"/>
+             <button class="primary" onclick="buscarBloquePorFolio()">Buscar bloque</button>
              <button class="primary" onclick="agregarBloquePorFolioPedido()">Agregar bloque por folio</button>
+             <button class="primary" onclick="limpiarPedidosActuales()" style="background:#d9534f;">Limpiar</button>
+             <div id="bloqueBuscadoPedido"></div>
         </div>
 
         <h3>Pedidos actuales del camión</h3>
@@ -446,30 +449,37 @@
               <span class="me-2" style="font-size:2rem;color:#2193b0;">
                 <i class="bi bi-file-earmark-pdf"></i>
               </span>
-              <h2 class="mb-0 text-center flex-grow-1" style="color:#2193b0;">Escanea tus traspasos para ser más ágil el proceso de acomodo</h2>
-            </div>
-            <div class="mb-3">
-              <label for="facturaPdfInput" class="form-label">Selecciona tu archivo PDF de factura</label>
-              <input type="file" id="facturaPdfInput" accept="application/pdf" class="form-control" multiple>
-            </div>
-            <button id="facturaScanBtn" class="btn btn-gradient w-100 mb-3">
-              <i class="bi bi-search"></i> Escanear y extraer texto
-            </button>
-            <button id="facturaClearBtn" class="btn btn-outline-danger w-100 mb-3">
-              <i class="bi bi-x-circle"></i> Limpiar
-            </button>
-            <div id="facturaLoading" class="text-center" style="display:none;">
-              <div class="spinner-border text-info"></div>
-              <p>Procesando...</p>
-            </div>
+           <h2 class="mb-0 text-center flex-grow-1" style="color:#2193b0;">Escanea tus traspasos para ser más ágil el proceso de acomodo</h2>
+           </div>
+           <div class="mb-3">
+               <label for="facturaPdfInput" class="form-label">Selecciona tu archivo PDF de factura</label>
+               <input type="file" id="facturaPdfInput" accept="application/pdf" class="form-control" multiple>
+           </div>
+           <button id="facturaScanBtn" class="btn btn-gradient w-100 mb-3">
+             <i class="bi bi-search"></i> Escanear y extraer texto
+           </button>
+           <!-- ...existing code... -->
+           <button id="facturaClearBtn" class="btn btn-outline-danger w-100 mb-3">
+             <i class="bi bi-x-circle"></i> Limpiar
+           </button>
+           <div class="mb-3 d-flex gap-2 align-items-center">
+             <input type="text" id="facturaSearchFolio" class="form-control" placeholder="Buscar por número de folio..." />
+             <input type="text" id="nombreBloqueFactura" class="form-control" placeholder="Nombre del bloque (ej: Facturas Julio 2025)">
+             <button id="btnTerminarBloqueFactura" class="btn btn-success">Terminar y guardar bloque</button>
+           </div>
+           <!-- ...existing code... -->
+           <div id="facturaLoading" class="text-center" style="display:none;">
+             <div class="spinner-border text-info"></div>
+             <p>Procesando...</p>
+           </div>
+           <progress id="facturaProgressBar" value="0" max="100" style="width:100%;height:22px;display:none;"></progress>
+           <div id="facturaResult" class="mt-3" style="white-space:pre-wrap; background:#f7f7f7; border-radius:8px; padding:16px; min-height:80px;"></div>
+           <div id="facturaGroupsContainer"></div>  
             <!-- Barra de avance para OCR Facturas -->
             <progress id="facturaProgressBar" value="0" max="100" style="width:100%;height:22px;display:none;"></progress>
             <div id="facturaResult" class="mt-3" style="white-space:pre-wrap; background:#f7f7f7; border-radius:8px; padding:16px; min-height:80px;"></div>
             <!-- Aquí va el contenedor de grupos -->
              <!-- Justo antes de <div id="facturaGroupsContainer"></div> -->
-            <div class="mb-3">
-              <input type="text" id="facturaSearchFolio" class="form-control" placeholder="Buscar por número de folio..." oninput="buscarFolioFactura()" />
-            </div>
             <div id="facturaGroupsContainer"></div>
           </div>
         </div>
@@ -558,7 +568,7 @@ z    }
     // ---------- Funciones para cargar datos ---------
     async function fetchInventario() {
         try {
-            const res = await fetch('https://sheetdb.io/api/v1/y83hk9vb1p9r8');
+            const res = await fetch('https://sheetdb.io/api/v1/dzrg1446fyb6f');
             if (!res.ok) throw new Error('Error al cargar inventario');
             inventario = await res.json();
             renderInventario();
@@ -568,7 +578,7 @@ z    }
     }
     async function fetchFlota() {
         try {
-            const res = await fetch('https://sheetdb.io/api/v1/y83hk9vb1p9r8?sheet=flota');
+            const res = await fetch('https://sheetdb.io/api/v1/dzrg1446fyb6f?sheet=flota');
             if (!res.ok) throw new Error('Error al cargar flota');
             flota = await res.json();
             renderFlota();
@@ -582,7 +592,7 @@ z    }
     // Función para cargar pedidos confirmados desde hoja
     async function fetchPedidosConfirmados() {
         try {
-            const res = await fetch('https://sheetdb.io/api/v1/y83hk9vb1p9r8?sheet=confirmados');
+            const res = await fetch('https://sheetdb.io/api/v1/dzrg1446fyb6f?sheet=confirmados');
             if (!res.ok) throw new Error('Error al cargar pedidos confirmados');
             pedidosConfirmados = await res.json();
             renderPedidosConfirmados();
@@ -606,7 +616,54 @@ z    }
             if (button.dataset.tab === 'pedidos-confirmados') fetchPedidosConfirmados();
         });
     });
-
+    
+    async function agregarBloquePorFolioPedido() {
+    const folio = document.getElementById('inputFolioFacturaPedido').value.trim();
+    if (!folio) {
+        alert('Escribe un folio válido.');
+        return;
+    }
+    // Busca el bloque en bloquesFacturas (ya cargados en la pestaña facturas)
+    const bloque = bloquesFacturas.find(b => b.nombre === folio || (b.datos[0]?.Folio === folio));
+    if (!bloque) {
+        alert('No se encontró un bloque con ese folio.');
+        return;
+    }
+    let agregadas = 0;
+    bloque.datos.forEach(prod => {
+        // Busca la llanta en inventario por clave/código
+        const llanta = inventario.find(item => item.clave?.toString() === prod.Código?.toString());
+        if (llanta) {
+            // Verifica si ya está en pedidosEnCurso
+            let pedidoExistente = pedidosEnCurso.find(p => p.clave === llanta.clave);
+            const cantidad = Number(prod.Cantidad) || 1;
+            if (pedidoExistente) {
+                pedidoExistente.cantidad += cantidad;
+                pedidoExistente.peso += (+llanta.peso) * cantidad;
+                pedidoExistente.volumen += (+llanta.volumen) * cantidad;
+                pedidoExistente.valor += (+llanta.valor) * cantidad;
+            } else {
+                pedidosEnCurso.push({
+                    clave: llanta.clave,
+                    descripcion: llanta.descripcion,
+                    linea: llanta.linea || '',
+                    cantidad: cantidad,
+                    peso: (+llanta.peso) * cantidad,
+                    volumen: (+llanta.volumen) * cantidad,
+                    valor: (+llanta.valor) * cantidad
+                });
+            }
+            agregadas++;
+        }
+    });
+    if (agregadas > 0) {
+        renderPedidosActuales();
+        actualizarGraficas();
+        alert(`Se agregaron ${agregadas} llantas del bloque "${folio}" al pedido.`);
+    } else {
+        alert('No se encontró ninguna llanta del bloque en el inventario.');
+    }
+}
 // --- PEGA AQUÍ ---
 async function calcularVolumenInventario() {
     // Ordena por clave numérica ascendente (opcional)
@@ -668,7 +725,7 @@ async function calcularVolumenInventario() {
             const volumen_m3 = volumen_mm3 / 1e9;
 
             // Actualiza en SheetDB
-            await fetch(`https://sheetdb.io/api/v1/y83hk9vb1p9r8/clave/${llanta.clave}`, {
+            await fetch(`https://sheetdb.io/api/v1/dzrg1446fyb6f/clave/${llanta.clave}`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ data: { volumen: volumen_m3.toFixed(4) } })
@@ -709,7 +766,7 @@ async function calcularVolumenInventario() {
    async function eliminarLlanta(clave) {
      if (!confirm('¿Seguro que deseas eliminar esta llanta?')) return;
      try {
-       const res = await fetch(`https://sheetdb.io/api/v1/y83hk9vb1p9r8/clave/${clave}`, {
+       const res = await fetch(`https://sheetdb.io/api/v1/dzrg1446fyb6f/clave/${clave}`, {
          method: 'DELETE'
       });
       if (!res.ok) throw new Error('No se pudo eliminar');
@@ -797,7 +854,7 @@ async function calcularVolumenInventario() {
             const volumen_m3 = volumen_mm3 / 1e9;
 
             // Actualiza en SheetDB
-            await fetch(`https://sheetdb.io/api/v1/y83hk9vb1p9r8/clave/${llanta.clave}`, {
+            await fetch(`https://sheetdb.io/api/v1/dzrg1446fyb6f/clave/${llanta.clave}`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ data: { volumen: volumen_m3.toFixed(4) } })
@@ -823,7 +880,7 @@ async function guardarEdicionLlanta(clave) {
     valor: document.getElementById('editValor').value
   };
   try {
-    const res = await fetch(`https://sheetdb.io/api/v1/y83hk9vb1p9r8/clave/${clave}`, {
+    const res = await fetch(`https://sheetdb.io/api/v1/dzrg1446fyb6f/clave/${clave}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ data: nuevosDatos })
@@ -900,7 +957,7 @@ function searchInventario() {
         const nuevoDato = { id, descripcion, peso, volumen, valor, "Línea": Línea };
 
         try {
-            const res = await fetch('https://sheetdb.io/api/v1/y83hk9vb1p9r8', {
+            const res = await fetch('https://sheetdb.io/api/v1/dzrg1446fyb6f', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ data: nuevoDato })
@@ -936,7 +993,7 @@ function searchInventario() {
   function renderFlota() {
     const tbody = document.querySelector('#tablaFlota tbody');
     tbody.innerHTML = '';
-    flota.forEach(camion => {
+    flota.forEach(camion => {   
         const cargaNum = parseFloat(camion["capacidad de carga (kg)"]);
         const volumenNum = parseFloat(camion["volumen"]);
         const cargaMostrar = isNaN(cargaNum) ? '-' : cargaNum.toFixed(3);
@@ -963,7 +1020,7 @@ function searchInventario() {
      async function eliminarCamion(economico) {
        if (!confirm('¿Seguro que deseas eliminar este camión?')) return;
        try {
-         const res = await fetch(`https://sheetdb.io/api/v1/y83hk9vb1p9r8/economico/${economico}?sheet=flota`, {
+         const res = await fetch(`https://sheetdb.io/api/v1/dzrg1446fyb6f/economico/${economico}?sheet=flota`, {
            method: 'DELETE'
          });
          if (!res.ok) throw new Error('No se pudo eliminar');
@@ -997,7 +1054,7 @@ function searchInventario() {
         volumen: document.getElementById('editCamionVolumen').value
       };
       try {
-        const res = await fetch(`https://sheetdb.io/api/v1/y83hk9vb1p9r8/economico/${economico}?sheet=flota`, {
+        const res = await fetch(`https://sheetdb.io/api/v1/dzrg1446fyb6f/economico/${economico}?sheet=flota`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ data: nuevosDatos })
@@ -1053,7 +1110,7 @@ function searchInventario() {
         };
 
         try {
-            const res = await fetch('https://sheetdb.io/api/v1/y83hk9vb1p9r8?sheet=flota', {
+            const res = await fetch('https://sheetdb.io/api/v1/dzrg1446fyb6f?sheet=flota', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ data: nuevoDato })
@@ -1213,9 +1270,9 @@ function searchInventario() {
                <td>${pedido.descripcion}</td>
                <td>${pedido.linea || ''}</td> 
                <td>${pedido.cantidad}</td>
-               <td>${pedido.volumen.toFixed(3)}</td>
-               <td>${pedido.peso.toFixed(3)}</td>
-               <td>${pedido.valor.toLocaleString('es-MX', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+               <td>${pedido.volumen.toLocaleString('es-MX', { minimumFractionDigits: 3, maximumFractionDigits: 3 })}</td>
+               <td>${pedido.peso.toLocaleString('es-MX', { minimumFractionDigits: 3, maximumFractionDigits: 3 })}</td>
+               <td>${pedido.valor.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                <td>
                    <button onclick="editarPedido(${idx})">Editar</button>
                    <button onclick="quitarPedido(${idx})">Quitar</button>
@@ -1230,8 +1287,9 @@ function searchInventario() {
             totalPeso += p.peso;
             totalValor += p.valor;
         });
-        document.getElementById('totalesPedido').innerText = 
-          `Total cantidad: ${totalCantidad} | Total volumen: ${totalVolumen.toFixed(3)} m³ | Total peso: ${totalPeso.toFixed(3)} kg | Total valor: $${totalValor.toFixed(2)}`;
+      // ...dentro de function renderPedidosActuales()...
+    document.getElementById('totalesPedido').innerText = 
+      `Total cantidad: ${totalCantidad.toLocaleString('es-MX')} | Total volumen: ${totalVolumen.toLocaleString('es-MX', { minimumFractionDigits: 3, maximumFractionDigits: 3 })} m³ | Total peso: ${totalPeso.toLocaleString('es-MX', { minimumFractionDigits: 3, maximumFractionDigits: 3 })} kg | Total valor: $${totalValor.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
          verificarCapacidad(totalVolumen, totalPeso);
     }
     function resetPedidoInputs() {
@@ -1242,7 +1300,14 @@ function searchInventario() {
         document.getElementById('pedidoVolumenLlanta').innerText = '0';
         document.getElementById('pedidoValorUnitarioLlanta').innerText = '0';
     }
-
+    // ...después de function renderPedidosActuales()...
+    function limpiarPedidosActuales() {
+    if (confirm('¿Seguro que deseas limpiar todos los pedidos actuales del camión?')) {
+        pedidosEnCurso = [];
+        renderPedidosActuales();
+        actualizarGraficas();
+    }
+}
     // ----- Gráficas -----
     const ctxVolumen = document.getElementById('graphVolumen').getContext('2d');
     const ctxCarga = document.getElementById('graphCarga').getContext('2d');
@@ -1327,7 +1392,7 @@ function verificarCapacidad(volumen, peso) {
         };
 
         try {
-            const res = await fetch('https://sheetdb.io/api/v1/y83hk9vb1p9r8?sheet=confirmados', {
+            const res = await fetch('https://sheetdb.io/api/v1/dzrg1446fyb6f?sheet=confirmados', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ data: nuevoPedido })
@@ -1350,31 +1415,31 @@ function verificarCapacidad(volumen, peso) {
 
     // -- Renderizar pedidos confirmados --
     function renderPedidosConfirmados() {
-        const tbody = document.querySelector('#tabla tbody');
-        tbody.innerHTML = '';
-        pedidosConfirmados.forEach((pedido, idx) => {
-            const tr = document.createElement('tr');
-            tr.innerHTML = `
-                <td>${pedido.camion}</td>
-                <td>${pedido.llantas}</td>
-                <td>${pedido.descripcion || ''}</td>
-                <td>
-                  <ul style="padding-left:18px;margin:0;">
-                    ${pedido.cantidad
-                      ? pedido.cantidad.split(',').map(q => `<li style="text-align:left;">${q.trim()}</li>`).join('')
-                      : ''}
-                 </ul>
-                </td>
-                <td>${pedido["total,cantidad"] || ''}</td>
-                <td>${pedido.linea || ''}</td>
-                <td>${Number(pedido.volumen).toLocaleString('es-MX', { minimumFractionDigits: 4, maximumFractionDigits: 4 })}</td>
-                <td>${Number(pedido.peso).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                <td>$${Number(pedido.valor).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                <td>${pedido.fecha || ''}</td>
-                <td><button onclick="cancelarPedido(${idx})">Cancelar</button></td>`;
-            tbody.appendChild(tr);
-        }); 
-    }
+    const tbody = document.querySelector('#tabla tbody');
+    tbody.innerHTML = '';
+    pedidosConfirmados.forEach((pedido, idx) => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td>${pedido.camion}</td>
+            <td>${pedido.llantas}</td>
+            <td>${pedido.descripcion || ''}</td>
+            <td>
+              <ul style="padding-left:18px;margin:0;">
+                ${pedido.cantidad
+                  ? pedido.cantidad.split(',').map(q => `<li style="text-align:left;">${q.trim()}</li>`).join('')
+                  : ''}
+             </ul>
+            </td>
+            <td>${pedido["total,cantidad"] || ''}</td>
+            <td>${pedido.linea || ''}</td>
+            <td>${Number(pedido.volumen).toLocaleString('es-MX', { minimumFractionDigits: 3, maximumFractionDigits: 3 })}</td>
+            <td>${Number(pedido.peso).toLocaleString('es-MX', { minimumFractionDigits: 3, maximumFractionDigits: 3 })}</td>
+            <td>$${Number(pedido.valor).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+            <td>${pedido.fecha || ''}</td>
+            <td><button onclick="cancelarPedido(${idx})">Cancelar</button></td>`;
+        tbody.appendChild(tr);
+    }); 
+}
     function cancelarPedido(idx) {
         if (confirm('¿Seguro que desea cancelar este pedido?')) {
             const pedidoACancelar = pedidosConfirmados[idx];
@@ -1426,6 +1491,7 @@ const facturaLoadingDiv = document.getElementById('facturaLoading');
 const facturaClearBtn = document.getElementById('facturaClearBtn');
 const facturaProgressBar = document.getElementById('facturaProgressBar');
 let bloquesFacturas = []; // [{nombre, datos: [facturas]}]
+let archivosEscaneados = []; // [{nombreArchivo, productos: [...] }]
 let facturasParaGuardar = [];
 
 // Botón Limpiar
@@ -1433,10 +1499,12 @@ let facturasParaGuardar = [];
 facturaClearBtn.onclick = () => {
     facturaPdfInput.value = '';
     facturaResultDiv.textContent = '';
-    facturaLoadingDiv.style.display = 'none';
+    archivosEscaneados = [];
+    facturasParaGuardar = [];
+    mostrarArchivosEscaneados();
+    facturaLoadingDiv.style.display = 'none'; // <-- agrega esto para ocultar el spinner
     facturaProgressBar.style.display = 'none';
-    bloquesFacturas = [];
-    mostrarBloquesFacturas();
+    // NO borres bloquesFacturas aquí
 };
 // ...existing code...
 
@@ -1444,7 +1512,7 @@ facturaClearBtn.onclick = () => {
 async function agregarNuevosProductosAlInventario(productos) {
     try {
         // 1. Obtener inventario actual
-        const res = await fetch('https://sheetdb.io/api/v1/y83hk9vb1p9r8');
+        const res = await fetch('https://sheetdb.io/api/v1/dzrg1446fyb6f');
         if (!res.ok) throw new Error('No se pudo cargar inventario');
         const inventarioActual = await res.json();
 
@@ -1464,7 +1532,7 @@ async function agregarNuevosProductosAlInventario(productos) {
 
         // 4. Enviar solo si hay nuevos
         if (nuevosDatos.length > 0) {
-            await fetch('https://sheetdb.io/api/v1/y83hk9vb1p9r8', {
+            await fetch('https://sheetdb.io/api/v1/dzrg1446fyb6f', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ data: nuevosDatos })
@@ -1479,115 +1547,123 @@ async function agregarNuevosProductosAlInventario(productos) {
 // Escanear y mostrar tabla + barra para nombre
 // ...existing code...
 facturaScanBtn.onclick = async () => {
-    facturaResultDiv.textContent = '';
-    const files = Array.from(facturaPdfInput.files).slice(0, 7);
+    const files = Array.from(facturaPdfInput.files);
     if (files.length === 0) {
-        alert('Por favor, selecciona hasta 7 archivos PDF.');
+        alert('Por favor, selecciona al menos un archivo PDF.');
         return;
     }
     facturaLoadingDiv.style.display = 'block';
     facturaProgressBar.style.display = 'block';
     facturaProgressBar.value = 0;
-    facturaProgressBar.max = files.length * 100;
+    facturaProgressBar.max = 100;
+    // NO borres archivosEscaneados aquí
 
-    let allHtml = '';
-    facturasParaGuardar = []; // <-- Reinicia aquí
-    for (let i = 0; i < files.length; i++) {
-        const file = files[i];
-        const reader = new FileReader();
-        await new Promise(resolve => {
-            reader.onload = async function() {
-                const typedarray = new Uint8Array(this.result);
-                const pdf = await pdfjsLib.getDocument(typedarray).promise;
-                let extractedText = '';
-                for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
-                    const page = await pdf.getPage(pageNum);
-                    const viewport = page.getViewport({ scale: 2 });
-                    const canvas = document.createElement('canvas');
-                    const context = canvas.getContext('2d');
-                    canvas.width = viewport.width;
-                    canvas.height = viewport.height;
-                    await page.render({ canvasContext: context, viewport: viewport }).promise;
-                    const dataUrl = canvas.toDataURL();
-                    const { data: { text } } = await Tesseract.recognize(dataUrl, 'spa', {
-                        logger: m => {
-                            facturaProgressBar.value = (i * 100) + Math.round(m.progress * 100);
-                            facturaLoadingDiv.innerHTML = `<div class="spinner-border text-info"></div><p>PDF ${i+1} - ${m.status}: ${Math.round(m.progress*100)}%</p>`;
-                        }
-                    });
-                    extractedText += text + '\n';
-                }
-                const folio = (extractedText.match(/FOLIO\s*[:\-]?\s*([A-Za-z0-9\-]+)/i) || [])[1] || '';
-                const fecha = (extractedText.match(/FECHA DE EMISION\s*[:\-]?\s*([0-9\/\:\. ]+)/i) || [])[1] || '';
-                const usuario = (extractedText.match(/USUARIO\s*[:\-]?\s*([A-Za-z\s]+)/i) || [])[1] || '';
-                const productoRegex = /^(\d+)\s+([A-Za-z0-9]+)\s+(.+)$/gm;
-                let productos = [];
-                let match;
-                while ((match = productoRegex.exec(extractedText)) !== null) {
-                    productos.push({
-                        Folio: folio,
-                        "Fecha de Emisión": fecha,
-                        Usuario: usuario,
-                        Cantidad: match[1],
-                        Código: match[2],
-                        Descripción: match[3].trim()
-                    });
-                }
-                facturasParaGuardar.push(...productos);
-
-                let html = `<h5 class="mt-4 mb-2">Archivo: ${file.name}</h5>
-                   <table class="table table-bordered">
-                       <thead>
-                           <tr>
-                              <th>Folio</th>
-                              <th>Fecha de Emisión</th>
-                              <th>Usuario</th>
-                              <th>Cantidad</th>
-                              <th>Código</th>
-                              <th>Descripción</th>
-                          </tr>
-                      </thead>
-                      <tbody>`;
-                productos.forEach((p, idx) => {
-                   html += `<tr>
-                       <td>${idx === 0 ? p.Folio : ''}</td>
-                       <td>${idx === 0 ? p["Fecha de Emisión"] : ''}</td>
-                       <td>${idx === 0 ? p.Usuario : ''}</td>
-                       <td>${p.Cantidad}</td>
-                       <td>${p.Código}</td>
-                       <td>${p.Descripción}</td>
-                  </tr>`;
-                });
-                html += '</tbody></table>';
-                allHtml += html;
-                resolve();
-            };
-            reader.readAsArrayBuffer(file);
-        });
+    try {
+        for (let i = 0; i < files.length; i++) {
+            const file = files[i];
+            const reader = new FileReader();
+            await new Promise(resolve => {
+                reader.onload = async function() {
+                    const typedarray = new Uint8Array(this.result);
+                    const pdf = await pdfjsLib.getDocument(typedarray).promise;
+                    let extractedText = '';
+                    for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+                        const page = await pdf.getPage(pageNum);
+                        const viewport = page.getViewport({ scale: 2 });
+                        const canvas = document.createElement('canvas');
+                        const context = canvas.getContext('2d');
+                        canvas.width = viewport.width;
+                        canvas.height = viewport.height;
+                        await page.render({ canvasContext: context, viewport: viewport }).promise;
+                        const dataUrl = canvas.toDataURL();
+                        const { data: { text } } = await Tesseract.recognize(dataUrl, 'spa', {
+                            logger: m => {
+                                facturaProgressBar.value = Math.round(m.progress * 100);
+                                facturaLoadingDiv.innerHTML = `<div class="spinner-border text-info"></div><p>PDF ${i+1} - ${m.status}: ${Math.round(m.progress*100)}%</p>`;
+                            }
+                        });
+                        extractedText += text + '\n';
+                    }
+                    const folio = (extractedText.match(/FOLIO\s*[:\-]?\s*([A-Za-z0-9\-]+)/i) || [])[1] || '';
+                    const fecha = (extractedText.match(/FECHA DE EMISION\s*[:\-]?\s*([0-9\/\:\. ]+)/i) || [])[1] || '';
+                    const usuario = (extractedText.match(/USUARIO\s*[:\-]?\s*([A-Za-z\s]+)/i) || [])[1] || '';
+                    const productoRegex = /^(\d+)\s+([A-Za-z0-9]+)\s+(.+)$/gm;
+                    let productos = [];
+                    let match;
+                    while ((match = productoRegex.exec(extractedText)) !== null) {
+                        productos.push({
+                            Folio: folio,
+                            "Fecha de Emisión": fecha,
+                            Usuario: usuario,
+                            Cantidad: match[1],
+                            Código: match[2],
+                            Descripción: match[3].trim()
+                        });
+                    }
+                    archivosEscaneados.push({ nombreArchivo: file.name, productos });
+                    mostrarArchivosEscaneados();
+                    resolve();
+                };
+                reader.readAsArrayBuffer(file);
+            });
+        }
+        // Actualiza productos acumulados para guardar
+        facturasParaGuardar = archivosEscaneados.flatMap(a => a.productos);
+    } catch (e) {
+        alert('Ocurrió un error durante el escaneo: ' + e.message);
+    } finally {
+        facturaLoadingDiv.style.display = 'none';
+        facturaProgressBar.style.display = 'none';
     }
-    facturaLoadingDiv.style.display = 'none';
-    facturaProgressBar.style.display = 'none';
+};
+    
+    mostrarArchivosEscaneados();
 
-    const primerFolio = facturasParaGuardar.length > 0 ? facturasParaGuardar[0].Folio : 'Sin nombre';
+    // Muestra TODOS los productos acumulados
+    let html = `<h5 class="mt-4 mb-2">Productos acumulados en el bloque:</h5>
+        <table class="table table-bordered">
+            <thead>
+                <tr>
+                    <th>Folio</th>
+                    <th>Fecha de Emisión</th>
+                    <th>Usuario</th>
+                    <th>Cantidad</th>
+                    <th>Código</th>
+                    <th>Descripción</th>
+                </tr>
+            </thead>
+            <tbody>`;
+    facturasParaGuardar.forEach((p, idx) => {
+        html += `<tr>
+            <td>${p.Folio}</td>
+            <td>${p["Fecha de Emisión"]}</td>
+            <td>${p.Usuario}</td>
+            <td>${p.Cantidad}</td>
+            <td>${p.Código}</td>
+            <td>${p.Descripción}</td>
+        </tr>`;
+    });
+    html += '</tbody></table>';
 
-    facturaResultDiv.innerHTML = `
-        <div class="mb-3">
-            <label>Nombre del bloque de facturas:</label>
-            <input type="text" id="nombreBloqueFactura" class="form-control mb-2" placeholder="Ejemplo: Facturas Julio 2025">
-            <button id="btnTerminarBloqueFactura" class="btn btn-success w-100">Terminar y guardar bloque</button>
-        </div>
-        <div id="bloqueTablaFactura">${allHtml}</div>
-    `;
+// ...existing code...
+document.getElementById('btnTerminarBloqueFactura').onclick = async () => {
+    const nombreBloque = document.getElementById('nombreBloqueFactura').value.trim() || 'Sin nombre';
+    facturasParaGuardar = archivosEscaneados.flatMap(a => a.productos);
+    if (facturasParaGuardar.length === 0) {
+        alert('No hay productos para guardar.');
+        return;
+    }
+    // Agrega el nombre del bloque a cada producto
+     facturasParaGuardar.forEach(p => p.Nombre = nombreBloque);
 
-    // SOLO ESTA definición del botón
-    document.getElementById('btnTerminarBloqueFactura').onclick = async () => {
-        const nombreBloque = document.getElementById('nombreBloqueFactura').value.trim() || 'Sin nombre';
-        bloquesFacturas.push({ nombre: nombreBloque, datos: facturasParaGuardar });
-        await guardarFacturasEnSheetDB(facturasParaGuardar);
-        await agregarNuevosProductosAlInventario(facturasParaGuardar); // <-- Agrega productos nuevos al inventario
-        facturaResultDiv.textContent = '';
-        mostrarBloquesFacturas();
-    };
+    bloquesFacturas.push({ nombre: nombreBloque, datos: facturasParaGuardar });
+    await guardarFacturasEnSheetDB(facturasParaGuardar);
+    await agregarNuevosProductosAlInventario(facturasParaGuardar);
+    facturaResultDiv.textContent = '';
+    archivosEscaneados = [];
+    facturasParaGuardar = [];
+    mostrarArchivosEscaneados();
+    mostrarBloquesFacturas();
 };
 // ...existing code...
 // filepath: c:\Users\mg296\OneDrive\Escritorio\cubicaja\Proyecto_de_residencia_profesional.html
@@ -1595,7 +1671,7 @@ facturaScanBtn.onclick = async () => {
 // Guardar en SheetDB (más rápido: POST en lote)
 async function guardarFacturasEnSheetDB(facturas) {
     try {
-        await fetch('https://sheetdb.io/api/v1/y83hk9vb1p9r8?sheet=facturas', {
+        await fetch('https://sheetdb.io/api/v1/dzrg1446fyb6f?sheet=facturas', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ data: facturas }) // Enviar array
@@ -1605,6 +1681,51 @@ async function guardarFacturasEnSheetDB(facturas) {
     }
 }
 // ...existing code...
+function mostrarArchivosEscaneados() {
+    let html = `<h5 class="mt-4 mb-2">Archivos escaneados:</h5>`;
+    archivosEscaneados.forEach((archivo, idx) => {
+        html += `
+            <div style="margin-bottom:8px;">
+                <b>${archivo.nombreArchivo}</b>
+                <button class="btn btn-danger btn-sm" onclick="eliminarArchivoEscaneado(${idx})">Eliminar</button>
+                <table class="table table-bordered mt-2">
+                    <thead>
+                        <tr>
+                            <th>Folio</th>
+                            <th>Fecha de Emisión</th>
+                            <th>Usuario</th>
+                            <th>Cantidad</th>
+                            <th>Código</th>
+                            <th>Descripción</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${archivo.productos.map(p => `
+                            <tr>
+                                <td>${p.Folio}</td>
+                                <td>${p["Fecha de Emisión"]}</td>
+                                <td>${p.Usuario}</td>
+                                <td>${p.Cantidad}</td>
+                                <td>${p.Código}</td>
+                                <td>${p.Descripción}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </div>
+        `;
+    });
+    
+    facturaResultDiv.innerHTML = html;
+
+
+}
+
+function eliminarArchivoEscaneado(idx) {
+    archivosEscaneados.splice(idx, 1);
+    facturaPdfInput.value = ''; // Limpia el input de archivos
+    mostrarArchivosEscaneados();
+}
 
 // Mostrar todos los bloques en la página
 function mostrarBloquesFacturas(filtro = '') {
@@ -1614,12 +1735,13 @@ function mostrarBloquesFacturas(filtro = '') {
         .filter(b => b.nombre.toLowerCase().includes(filtro.toLowerCase()))
         .forEach((bloque, idx) => {
         let html = `
-            <div class="card mb-4" id="bloqueFactura${idx}">
-                <div class="card-header d-flex justify-content-between align-items-center">
+            <div class="card mb-2" id="bloqueFactura${idx}">
+                <div class="card-header d-flex justify-content-between align-items-center" style="cursor:pointer;" onclick="toggleDetalleBloque(${idx})">
                     <strong>${bloque.nombre}</strong>
-                    <button class="btn btn-danger btn-sm" onclick="eliminarBloqueFactura(${idx})">Eliminar bloque</button>
+                    <span style="font-size:1.2em;">&#x25BC;</span>
+                    <button class="btn btn-danger btn-sm" onclick="event.stopPropagation(); eliminarBloqueFactura(${idx})">Eliminar bloque</button>
                 </div>
-                <div class="card-body">
+                <div class="card-body" id="detalleBloque${idx}" style="display:none;">
                     <table class="table table-bordered">
                         <thead>
                             <tr>
@@ -1651,25 +1773,29 @@ function mostrarBloquesFacturas(filtro = '') {
     });
 }
 
+// Agrega esta función para expandir/colapsar el detalle
+function toggleDetalleBloque(idx) {
+    const detalle = document.getElementById('detalleBloque' + idx);
+    if (detalle.style.display === 'none') {
+        detalle.style.display = 'block';
+    } else {
+        detalle.style.display = 'none';
+    }
+}
 // Eliminar bloque de la página y de la hoja de cálculo
 // filepath: c:\Users\mg296\OneDrive\Escritorio\cubicaja\Proyecto_de_residencia_profesional.html
 // ...existing code...
 async function eliminarBloqueFactura(idx) {
     if (!confirm('¿Seguro que deseas eliminar este bloque de facturas?')) return;
     const bloque = bloquesFacturas[idx];
-    // Obtén el folio del bloque (todas las facturas del bloque deben tener el mismo folio)
-    const folio = bloque.datos[0]?.Folio?.trim();
+    const nombreBloque = bloque.nombre;
     let errores = 0;
-    if (folio) {
-        try {
-            const res = await fetch(`https://sheetdb.io/api/v1/y83hk9vb1p9r8/Folio/${encodeURIComponent(folio)}?sheet=facturas`, {
-                method: 'DELETE'
-            });
-            if (!res.ok) errores = bloque.datos.length;
-        } catch (e) {
-            errores = bloque.datos.length;
-        }
-    } else {
+    try {
+        const res = await fetch(`https://sheetdb.io/api/v1/dzrg1446fyb6f/Nombre/${encodeURIComponent(nombreBloque)}?sheet=facturas`, {
+            method: 'DELETE'
+        });
+        if (!res.ok) errores = bloque.datos.length;
+    } catch (e) {
         errores = bloque.datos.length;
     }
     bloquesFacturas.splice(idx, 1);
@@ -1689,14 +1815,14 @@ document.getElementById('facturaSearchFolio').addEventListener('input', function
 // Al cargar la pestaña, carga los bloques desde SheetDB
 document.querySelector('button[data-tab="facturas"]').addEventListener('click', async () => {
     try {
-        const res = await fetch('https://sheetdb.io/api/v1/y83hk9vb1p9r8?sheet=facturas');
+        const res = await fetch('https://sheetdb.io/api/v1/dzrg1446fyb6f?sheet=facturas');
         if (!res.ok) throw new Error('No se pudo cargar facturas');
         const facturas = await res.json();
-        // Agrupa por Folio o por Fecha de Emisión (puedes ajustar la agrupación)
         bloquesFacturas = [];
         let grupos = {};
         facturas.forEach(f => {
-            const grupo = f.Folio || f["Fecha de Emisión"] || 'Sin nombre';
+            // Agrupa por 'Nombre' (mayúscula inicial)
+            const grupo = f.Nombre || f.Folio || f["Fecha de Emisión"] || 'Sin nombre';
             if (!grupos[grupo]) grupos[grupo] = [];
             grupos[grupo].push(f);
         });
@@ -1708,7 +1834,6 @@ document.querySelector('button[data-tab="facturas"]').addEventListener('click', 
         document.getElementById('facturaGroupsContainer').innerHTML = '<div class="alert alert-danger">No se pudo cargar facturas guardadas.</div>';
     }
 });
-
 // ...existing code...
 </script>
 </body>
