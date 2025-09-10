@@ -1461,6 +1461,7 @@ function verificarCapacidad(volumen, peso) {
       <li>En <b>Flota</b>, administra camiones y capacidades.</li>
       <li>En <b>Pedidos</b>, gestiona la asignación de pedidos a las diferentes unidades controlando su volumen y capacidad de carga.</li>
       <li>En <b>Pedidos Confirmados</b>, revisa y gestiona los pedidos aceptados.</li>
+      <li>En <b>Facturas</b>, escanea tus traspasos para después generar  el cubicaje correspondiente.</li>
     </ul>
     <p>Usa la barra de búsqueda para filtrar y los botones para agregar o actualizar datos.</p>
     <button onclick="cerrarInstrucciones()" style="background:#489051;color:white;padding:10px 15px;border:none;border-radius:5px;cursor:pointer;">Cerrar</button>
@@ -1587,10 +1588,24 @@ facturaScanBtn.onclick = async () => {
                     const folio = (extractedText.match(/FOLIO\s*[:\-]?\s*([A-Za-z0-9\-]+)/i) || [])[1] || '';
                     const fecha = (extractedText.match(/FECHA DE EMISION\s*[:\-]?\s*([0-9\/\:\. ]+)/i) || [])[1] || '';
                     const usuario = (extractedText.match(/USUARIO\s*[:\-]?\s*([A-Za-z\s]+)/i) || [])[1] || '';
-                    const productoRegex = /^(\d+)\s+([A-Za-z0-9]+)\s+(.+)$/gm;
+
+                    // Limpia el texto antes de aplicar el regex
+                    let textoLimpio = extractedText
+                       .replace(/\r/g, '')
+                       .replace(/[ ]{2,}/g, ' ')
+                       .replace(/^\s*$/gm, '');
+
+                    // Regex mejorado para filas tipo tabla
+                    const productoRegex = /^\s*(\d+)\s+([A-Za-z0-9\-]+)\s+(.+)$/gm;
                     let productos = [];
                     let match;
-                    while ((match = productoRegex.exec(extractedText)) !== null) {
+                    while ((match = productoRegex.exec(textoLimpio)) !== null) {
+                        // Filtra encabezados y filas vacías
+                        if (
+                            match[2].toUpperCase() === 'CÓDIGO' ||
+                            match[3].toUpperCase() === 'DESCRIPCIÓN' ||
+                            !match[2] || !match[3]
+                        ) continue;
                         productos.push({
                             Folio: folio,
                             "Fecha de Emisión": fecha,
@@ -1599,7 +1614,7 @@ facturaScanBtn.onclick = async () => {
                             Código: match[2],
                             Descripción: match[3].trim()
                         });
-                    }
+                    } 
                     archivosEscaneados.push({ nombreArchivo: file.name, productos });
                     mostrarArchivosEscaneados();
                     resolve();
@@ -1788,13 +1803,22 @@ function toggleDetalleBloque(idx) {
 async function eliminarBloqueFactura(idx) {
     if (!confirm('¿Seguro que deseas eliminar este bloque de facturas?')) return;
     const bloque = bloquesFacturas[idx];
-    const nombreBloque = bloque.nombre;
+    const nombreBloque = (bloque.nombre || '').trim().toLowerCase();
+
+    // 1. Obtén todas las filas con ese nombre
     let errores = 0;
     try {
-        const res = await fetch(`https://sheetdb.io/api/v1/dzrg1446fyb6f/Nombre/${encodeURIComponent(nombreBloque)}?sheet=facturas`, {
-            method: 'DELETE'
-        });
-        if (!res.ok) errores = bloque.datos.length;
+        const res = await fetch(`https://sheetdb.io/api/v1/dzrg1446fyb6f/Nombre/${encodeURIComponent(nombreBloque)}?sheet=facturas`);
+        const facturas = await res.json();
+        // 2. Elimina cada una por su row_id
+        for (const factura of facturas) {
+            if (factura.row_id) {
+                const delRes = await fetch(`https://sheetdb.io/api/v1/dzrg1446fyb6f/row_id/${factura.row_id}?sheet=facturas`, {
+                    method: 'DELETE'
+                });
+                if (!delRes.ok) errores++;
+            }
+        }
     } catch (e) {
         errores = bloque.datos.length;
     }
