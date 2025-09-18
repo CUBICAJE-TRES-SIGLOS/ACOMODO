@@ -1359,22 +1359,23 @@ function verificarCapacidad(volumen, peso) {
     const capPes = safeNum(pedidoCamion["capacidad de carga (kg)"] || pedidoCamion.carga || pedidoCamion["carga"]);
     const volumenPercent = (volumen / capVol) * 100,
         pesoPercent = (peso / capPes) * 100;
-
-    // ALERTA si pasa el 85%
+    
+    // Las alertas están temporalmente desactivadas
+    // Puedes volver a activarlas eliminando los comentarios
+    /*
     if (volumenPercent > 85) {
         alert('¡Advertencia! Solo queda el 15% de espacio de volumen disponible en el camión.');
     }
     if (pesoPercent > 85) {
         alert('¡Advertencia! Solo queda el 15% de capacidad de carga disponible en el camión.');
     }
-
     if (volumenPercent > 80 || pesoPercent > 80) {
         if (confirm('El camión se está llenando (>85%), ¿desea completar con otro camión?')) {
             alert('Aquí puedes permitir solicitar otro camión para continuar cargando los pedidos.');
         }
     }
+    */
 }
-
     // Modificada función aceptarPedido para guardar en SheetDB confirmados
     async function aceptarPedido() {
         if (!pedidoCamion) {
