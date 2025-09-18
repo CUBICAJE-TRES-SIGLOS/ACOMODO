@@ -428,6 +428,10 @@
              <button class="primary" onclick="agregarBloquePorFolioPedido()">Agregar bloque por folio</button>
              <button class="primary" onclick="limpiarPedidosActuales()" style="background:#d9534f;">Limpiar</button>
              <div id="bloqueBuscadoPedido"></div>
+              <div style="margin-top: 10px; font-weight: bold;">
+            <span id="totalesPedido"></span>
+        </div>
+        <button class="primary" onclick="aceptarPedido()" style="margin-top: 10px;">Aceptar Pedido</button>
         </div>
 
         <h3>Pedidos actuales del camión</h3>
@@ -446,12 +450,6 @@
             </thead>
             <tbody></tbody>
         </table>
-
-        <div style="margin-top: 10px; font-weight: bold;">
-            <span id="totalesPedido"></span>
-        </div>
-
-        <button class="primary" onclick="aceptarPedido()" style="margin-top: 10px;">Aceptar Pedido</button>
     </div>
 
     <!-- Pedidos Confirmados -->
