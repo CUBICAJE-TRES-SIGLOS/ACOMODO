@@ -250,7 +250,10 @@
             <input type="text" id="searchInventario" class="search-bar" placeholder="Buscar por ID Llanta..." oninput="searchInventario()" />
             <button class="primary" onclick="openModal('modalInventario')">Agregar Llanta</button>
             <button class="primary" onclick="fetchInventario()">Actualizar inventario</button>
+            <button class="primary" onclick="calcularVolumenInventario()">Calcular Volúmenes</button>
         </div>
+
+        <div id="loadingMessage" style="display:none;">Calculando volúmenes...</div>
 
         <table id="tablaInventario">
             <thead>
@@ -269,6 +272,7 @@
 
     <!-- Modal Inventario -->
     <div id="modalInventario" class="modal">
+      <div id="loadingMessage" style="display:none;">Calculando volúmenes...</div>
         <div class="modal-content">
             <span class="close" onclick="closeModal('modalInventario')">&times;</span>
             <form id="formAgregarLlanta" class="add-form" onsubmit="event.preventDefault(); agregarNuevaLlanta();">
@@ -370,7 +374,7 @@
         <div style="margin-top: 20px;">
             <div class="graph-container">
                 <canvas id="graphVolumen" width="150" height="50"></canvas>
-                <p style="text-align:center">Volumen Usado</p>
+                <p style="text-align:center">espacio usado</p>
             </div>
             <div class="graph-container">
                 <canvas id="graphCarga" width="150" height="50"></canvas>
@@ -527,6 +531,22 @@
     let pedidosConfirmados = [];
     let pedidosEnCurso = [];
     let pedidoCamion = null;
+    // Agregar después de las variables globales y antes de fetchInventario()
+function mostrarEstado(mensaje, tipo = 'info') {
+    console.log(mensaje);
+    const statusDiv = document.createElement('div');
+    statusDiv.textContent = mensaje;
+    statusDiv.style.position = 'fixed';
+    statusDiv.style.bottom = '20px';
+    statusDiv.style.right = '20px';
+    statusDiv.style.padding = '10px';
+    statusDiv.style.backgroundColor = tipo === 'error' ? '#ffebee' : '#f0f4ff';
+    statusDiv.style.border = '1px solid #ccc';
+    statusDiv.style.borderRadius = '4px';
+    statusDiv.style.zIndex = '1000';
+    document.body.appendChild(statusDiv);
+    setTimeout(() => statusDiv.remove(), 3000);
+}
     // Helper: parsea valores que vienen de la hoja y devuelve número seguro (0 si no es numérico)
     function safeNum(v) {
         if (v === null || v === undefined) return 0;
@@ -637,7 +657,7 @@ async function agregarBloquePorFolioPedido() {
     // ---------- Funciones para cargar datos ---------
     async function fetchInventario() {
         try {
-            const res = await fetch('https://sheetdb.io/api/v1/tblylxi4mrvid');
+            const res = await fetch('https://sheetdb.io/api/v1/342t76he2suo4');
             if (!res.ok) throw new Error('Error al cargar inventario');
             inventario = await res.json();
             renderInventario();
@@ -647,7 +667,7 @@ async function agregarBloquePorFolioPedido() {
     }
     async function fetchFlota() {
         try {
-            const res = await fetch('https://sheetdb.io/api/v1/tblylxi4mrvid?sheet=flota');
+            const res = await fetch('https://sheetdb.io/api/v1/342t76he2suo4?sheet=flota');
             if (!res.ok) throw new Error('Error al cargar flota');
             flota = await res.json();
             renderFlota();
@@ -661,7 +681,7 @@ async function agregarBloquePorFolioPedido() {
     // Función para cargar pedidos confirmados desde hoja
     async function fetchPedidosConfirmados() {
         try {
-            const res = await fetch('https://sheetdb.io/api/v1/tblylxi4mrvid?sheet=confirmados');
+            const res = await fetch('https://sheetdb.io/api/v1/342t76he2suo4?sheet=confirmados');
             if (!res.ok) throw new Error('Error al cargar pedidos confirmados');
             pedidosConfirmados = await res.json();
             renderPedidosConfirmados();
@@ -733,7 +753,7 @@ function renderInventario() {
    async function eliminarLlanta(clave) {
      if (!confirm('¿Seguro que deseas eliminar esta llanta?')) return;
      try {
-       const res = await fetch(`https://sheetdb.io/api/v1/tblylxi4mrvid/clave/${clave}`, {
+       const res = await fetch(`https://sheetdb.io/api/v1/342t76he2suo4/clave/${clave}`, {
          method: 'DELETE'
       });
       if (!res.ok) throw new Error('No se pudo eliminar');
@@ -762,120 +782,112 @@ function renderInventario() {
   openModal('modalInventario');
 }
 // --- PEGA AQUÍ ---
-// ...existing code...
+// Después de editarLlanta() y antes de guardarEdicionLlanta()
 async function calcularVolumenInventario() {
-    inventario.sort((a, b) => Number(a.clave) - Number(b.clave));
+    let updatedRows = [];  // Definir aquí al inicio
     let noCalculadas = [];
-    const updatedRows = []; // {clave, volumen}
-    const failedRows = []; // {clave, descripcion, error}
-    const margenLogistico = 1.40; // 40% extra por logística
-    for (const llanta of inventario) {
-        if (!llanta.volumen || Number(llanta.volumen) === 0) {
-            let ancho, perfil, rin;
-            let desc = (llanta.descripcion || '').replace(/[()]/g, '').toUpperCase();
+    let failedRows = [];
 
-            // 1. 185 60 R14 o 185/60 R14
-            let m = desc.match(/(\d{3})[\/\s\-](\d{2})[\/\s\-]?R?(\d{2,2}\.?\d*)/);
-            if (m) {
-                ancho = Number(m[1]) / 1000; // a metros
-                perfil = Number(m[2]) / 100;
-                rin = Number(m[3]) * 0.0254; // a metros
-            }
-            // 2. 11R22.5, 12R24.5, 295 75 R22.5
-            else if ((m = desc.match(/(\d{2,3})R(\d{2,2}\.?\d*)/))) {
-                ancho = Number(m[1]) * 25.4 / 1000; // pulgadas a metros
-                perfil = 0.80; // asume 80%
-                rin = Number(m[2]) * 0.0254;
-            }
-            // 3. 31X10.50 R15, 33X12.50 R15
-            else if ((m = desc.match(/(\d{2,3})[Xx](\d{2,3}\.?\d*)\s*R?(\d{2,2})/))) {
-                rin = Number(m[1]) * 0.0254;
-                ancho = Number(m[2]) * 25.4 / 1000;
-                perfil = 0.80;
-            }
-            // 4. 7.50-16, 12.5/80-18, 14.9-24, 12-16.5
-            else if ((m = desc.match(/(\d{1,2}\.?\d*)[\/\-](\d{2,3})[\- ](\d{2,2}\.?\d*)/))) {
-                ancho = Number(m[1]) * 25.4 / 1000;
-                perfil = 0.80;
-                rin = Number(m[3]) * 0.0254;
-            }
-            // 5. 285/75 R24.5, 295/80 R22.5
-            else if ((m = desc.match(/(\d{3})\/(\d{2})\s*R?(\d{2,2}\.?\d*)/))) {
-                ancho = Number(m[1]) / 1000;
-                perfil = Number(m[2]) / 100;
-                rin = Number(m[3]) * 0.0254;
-            }
-            // 6. 14.9-24, 12-16.5 (sin perfil)
-            else if ((m = desc.match(/(\d{1,2}\.?\d*)[\- ](\d{2,2}\.?\d*)/))) {
-                ancho = Number(m[1]) * 25.4 / 1000;
-                perfil = 0.80;
-                rin = Number(m[2]) * 0.0254;
-            }
-            else {
-                noCalculadas.push(llanta.descripcion || '(sin descripción)');
-                continue;
-            }
+    try {
+        mostrarEstado('Iniciando cálculos...');
+        const loadingMsg = document.getElementById('loadingMessage');
+        if (loadingMsg) loadingMsg.style.display = 'block';
+        
+        // Referencia actualizada al botón
+        const calcBtn = document.querySelector('button[onclick="calcularVolumenInventario()"]');
+        if (calcBtn) calcBtn.disabled = true;
 
-            // Altura flanco
-            let alturaFlanco = perfil * ancho;
-            // Diámetro externo
-            let diametroExterno = rin + 2 * alturaFlanco;
+        inventario.sort((a, b) => Number(a.clave) - Number(b.clave));
+        const margenLogistico = 1.40;
 
-            // Volumen tipo cubicaje (como en la imagen), con margen logístico
-            let volumen_m3 = diametroExterno * diametroExterno * ancho * margenLogistico;
+        for (const llanta of inventario) {
+            if (!llanta.volumen || Number(llanta.volumen) === 0) {
+                let ancho, perfil, rin;
+                let desc = (llanta.descripcion || '').replace(/[()]/g, '').toUpperCase();
 
-            // Actualiza en SheetDB (usa row_id cuando esté disponible). Si falla, intenta obtener row_id y reintentar.
-            const newVol = volumen_m3.toFixed(4);
-            try {
-                if (llanta.row_id) {
-                    console.log('Patch por row_id', llanta.row_id, 'clave', llanta.clave, '->', newVol);
-                    const res = await fetch(`https://sheetdb.io/api/v1/tblylxi4mrvid/row_id/${encodeURIComponent(llanta.row_id)}`, {
+                // 1. 185 60 R14 o 185/60 R14
+                let m = desc.match(/(\d{3})[\/\s\-](\d{2})[\/\s\-]?R?(\d{2,2}\.?\d*)/);
+                if (m) {
+                    ancho = Number(m[1]) / 1000;
+                    perfil = Number(m[2]) / 100;
+                    rin = Number(m[3]) * 0.0254;
+                }
+                // 2. 11R22.5, 12R24.5, 295 75 R22.5
+                else if ((m = desc.match(/(\d{2,3})R(\d{2,2}\.?\d*)/))) {
+                    ancho = Number(m[1]) * 25.4 / 1000;
+                    perfil = 0.80;
+                    rin = Number(m[2]) * 0.0254;
+                }
+                // 3. 31X10.50 R15, 33X12.50 R15
+                else if ((m = desc.match(/(\d{2,3})[Xx](\d{2,3}\.?\d*)\s*R?(\d{2,2})/))) {
+                    rin = Number(m[1]) * 0.0254;
+                    ancho = Number(m[2]) * 25.4 / 1000;
+                    perfil = 0.80;
+                }
+                // 4. 7.50-16, 12.5/80-18, 14.9-24, 12-16.5
+                else if ((m = desc.match(/(\d{1,2}\.?\d*)[\/\-](\d{2,3})[\- ](\d{2,2}\.?\d*)/))) {
+                    ancho = Number(m[1]) * 25.4 / 1000;
+                    perfil = 0.80;
+                    rin = Number(m[3]) * 0.0254;
+                }
+                // 5. 285/75 R24.5, 295/80 R22.5
+                else if ((m = desc.match(/(\d{3})\/(\d{2})\s*R?(\d{2,2}\.?\d*)/))) {
+                    ancho = Number(m[1]) / 1000;
+                    perfil = Number(m[2]) / 100;
+                    rin = Number(m[3]) * 0.0254;
+                }
+                // 6. 14.9-24, 12-16.5 (sin perfil)
+                else if ((m = desc.match(/(\d{1,2}\.?\d*)[\- ](\d{2,2}\.?\d*)/))) {
+                    ancho = Number(m[1]) * 25.4 / 1000;
+                    perfil = 0.80;
+                    rin = Number(m[2]) * 0.0254;
+                }
+                else {
+                    noCalculadas.push(llanta.descripcion || '(sin descripción)');
+                    continue;
+                }
+
+                let alturaFlanco = perfil * ancho;
+                let diametroExterno = rin + 2 * alturaFlanco;
+                let volumen_m3 = diametroExterno * diametroExterno * ancho * margenLogistico;
+                const newVol = volumen_m3.toFixed(4);
+
+                try {
+                    const res = await fetch(`https://sheetdb.io/api/v1/342t76he2suo4/clave/${llanta.clave}`, {
                         method: 'PATCH',
-                        headers: { 'Content-Type': 'application/json' },
+                        headers: {'Content-Type': 'application/json'},
                         body: JSON.stringify({ data: { volumen: newVol } })
                     });
+
                     if (!res.ok) throw new Error('PATCH falló con status ' + res.status);
-                } else {
-                    // Intenta obtener la fila para conocer su row_id
-                    const key = encodeURIComponent(String(llanta.clave));
-                    console.log('Buscando row para clave', llanta.clave);
-                    const getRes = await fetch(`https://sheetdb.io/api/v1/tblylxi4mrvid/clave/${key}`);
-                    if (!getRes.ok) throw new Error('GET row por clave falló con status ' + getRes.status);
-                    const rows = await getRes.json();
-                    if (Array.isArray(rows) && rows.length > 0 && rows[0].row_id) {
-                        const rid = rows[0].row_id;
-                        console.log('Obtuvo row_id', rid, 'para clave', llanta.clave, '- realizando PATCH');
-                        const res2 = await fetch(`https://sheetdb.io/api/v1/tblylxi4mrvid/row_id/${encodeURIComponent(rid)}`, {
-                            method: 'PATCH',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ data: { volumen: newVol } })
-                        });
-                        if (!res2.ok) throw new Error('PATCH (por row_id) falló con status ' + res2.status);
-                    } else {
-                        throw new Error('No se encontró row_id para clave ' + llanta.clave);
-                    }
+                    llanta.volumen = newVol;
+                    updatedRows.push({ clave: llanta.clave, volumen: newVol });
+                    await new Promise(r => setTimeout(r, 120));
+                } catch (err) {
+                    console.error('No se pudo actualizar volumen para clave', llanta.clave, err);
+                    failedRows.push({ clave: llanta.clave, descripcion: llanta.descripcion || '', error: err.message });
                 }
-                // Guarda en memoria
-                llanta.volumen = newVol;
-                updatedRows.push({ clave: llanta.clave, volumen: newVol });
-                // Pequeña espera para evitar rate limits
-                await new Promise(r => setTimeout(r, 120));
-            } catch (err) {
-                console.error('No se pudo actualizar volumen para clave', llanta.clave, err);
-                const msg = `${llanta.clave} (${llanta.descripcion || 'sin descripción'}) - ${err.message}`;
-                noCalculadas.push(msg);
-                failedRows.push({ clave: llanta.clave, descripcion: llanta.descripcion || '', error: err.message });
             }
         }
-    }
-    renderInventario();
 
-    // Genera CSV descargable con las filas actualizadas para import manual si las PATCH fallaron
-    if (updatedRows.length > 0) {
-        const csvLines = ['clave,volumen'];
-        updatedRows.forEach(r => csvLines.push(`${JSON.stringify(r.clave)},${r.volumen}`));
-        const csv = csvLines.join('\n');
-        try {
+        renderInventario();
+        
+        // Mostrar resultados
+        if (noCalculadas.length > 0) {
+            alert('No se pudo calcular el volumen de las siguientes llantas:\n' + 
+                  noCalculadas.slice(0, 10).join('\n') + 
+                  (noCalculadas.length > 10 ? '\n...y más' : ''));
+        } else if (updatedRows.length > 0) {
+            alert('Volumen calculado y actualizado para todas las llantas que tenían volumen vacío.');
+        } else {
+            alert('No se encontraron llantas que requieran cálculo de volumen.');
+        }
+
+        // Generar CSV si hay actualizaciones
+        if (updatedRows.length > 0) {
+            const csvLines = ['clave,volumen'];
+            updatedRows.forEach(r => csvLines.push(`${JSON.stringify(r.clave)},${r.volumen}`));
+            const csv = csvLines.join('\n');
             const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
@@ -885,44 +897,19 @@ async function calcularVolumenInventario() {
             a.click();
             a.remove();
             URL.revokeObjectURL(url);
-            console.log('CSV con actualizaciones descargado: volumen_updates.csv (contiene', updatedRows.length, 'filas)');
-        } catch (e) {
-            console.warn('No se pudo generar el CSV descargable:', e);
         }
-    }
-    if (noCalculadas.length > 0) {
-        alert('No se pudo calcular el volumen de las siguientes llantas:\n' + noCalculadas.slice(0, 10).join('\n') + (noCalculadas.length > 10 ? '\n...y más' : ''));
-    } else {
-        alert('Volumen calculado y actualizado para todas las llantas que tenían volumen vacío (con margen de seguridad).');
-    }
-}
-// ...existing code...
-async function guardarEdicionLlanta(clave) {
-  const nuevosDatos = {
-    descripcion: document.getElementById('editDescripcion').value,
-    linea: document.getElementById('editLinea').value,
-    peso: document.getElementById('editPeso').value,
-    volumen: document.getElementById('editVolumen').value,
-    valor: document.getElementById('editValor').value
-  };
-  try {
-    const res = await fetch(`https://sheetdb.io/api/v1/tblylxi4mrvid/clave/${clave}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ data: nuevosDatos })
-    });
-    if (!res.ok) throw new Error('No se pudo editar');
-    // Actualiza localmente y vuelve a renderizar
-    const llanta = inventario.find(item => item.clave === clave);
-    Object.assign(llanta, nuevosDatos);
-    renderInventario();
-    closeModal('modalInventario');
-    alert('Llanta editada correctamente.');
-  } catch (error) {
-    alert('Error al editar: ' + error.message);
-  }
-}
 
+    } catch (error) {
+        console.error('Error en cálculos:', error);
+        mostrarEstado(`Error: ${error.message}`, 'error');
+    } finally {
+        const loadingMsg = document.getElementById('loadingMessage');
+        const calcBtn = document.querySelector('button[onclick="calcularVolumenInventario()"]');
+        
+        if (loadingMsg) loadingMsg.style.display = 'none';
+        if (calcBtn) calcBtn.disabled = false;
+    }
+}
 // Buscar ID inventario
 function searchInventario() {
     const filter = document.getElementById('searchInventario').value.toLowerCase();
@@ -983,7 +970,7 @@ function searchInventario() {
     const nuevoDato = { id, clave: id, descripcion, peso, volumen, valor, "Línea": Línea };
 
         try {
-            const res = await fetch('https://sheetdb.io/api/v1/tblylxi4mrvid', {
+            const res = await fetch('https://sheetdb.io/api/v1/342t76he2suo4/id', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ data: nuevoDato })
@@ -1046,7 +1033,7 @@ function searchInventario() {
      async function eliminarCamion(economico) {
        if (!confirm('¿Seguro que deseas eliminar este camión?')) return;
        try {
-         const res = await fetch(`https://sheetdb.io/api/v1/tblylxi4mrvid/economico/${economico}?sheet=flota`, {
+         const res = await fetch(`https://sheetdb.io/api/v1/342t76he2suo4/economico/${economico}?sheet=flota`, {
            method: 'DELETE'
          });
          if (!res.ok) throw new Error('No se pudo eliminar');
@@ -1080,7 +1067,7 @@ function searchInventario() {
         volumen: document.getElementById('editCamionVolumen').value
       };
       try {
-        const res = await fetch(`https://sheetdb.io/api/v1/tblylxi4mrvid/economico/${economico}?sheet=flota`, {
+        const res = await fetch(`https://sheetdb.io/api/v1/342t76he2suo4/economico/${economico}?sheet=flota`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ data: nuevosDatos })
@@ -1136,7 +1123,7 @@ function searchInventario() {
         };
 
         try {
-            const res = await fetch('https://sheetdb.io/api/v1/tblylxi4mrvid?sheet=flota', {
+            const res = await fetch('https://sheetdb.io/api/v1/342t76he2suo4?sheet=flota', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ data: nuevoDato })
@@ -1418,7 +1405,7 @@ function verificarCapacidad(volumen, peso) {
         };
 
         try {
-            const res = await fetch('https://sheetdb.io/api/v1/tblylxi4mrvid?sheet=confirmados', {
+            const res = await fetch('https://sheetdb.io/api/v1/342t76he2suo4?sheet=confirmados', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ data: nuevoPedido })
@@ -1539,7 +1526,7 @@ facturaClearBtn.onclick = () => {
 async function agregarNuevosProductosAlInventario(productos) {
     try {
         // 1. Obtener inventario actual
-        const res = await fetch('https://sheetdb.io/api/v1/tblylxi4mrvid');
+        const res = await fetch('https://sheetdb.io/api/v1/342t76he2suo4');
         if (!res.ok) throw new Error('No se pudo cargar inventario');
         const inventarioActual = await res.json();
 
@@ -1559,7 +1546,7 @@ async function agregarNuevosProductosAlInventario(productos) {
 
         // 4. Enviar solo si hay nuevos
         if (nuevosDatos.length > 0) {
-            await fetch('https://sheetdb.io/api/v1/tblylxi4mrvid', {
+            await fetch('https://sheetdb.io/api/v1/342t76he2suo4', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ data: nuevosDatos })
@@ -1712,7 +1699,7 @@ document.getElementById('btnTerminarBloqueFactura').onclick = async () => {
 // Guardar en SheetDB (más rápido: POST en lote)
 async function guardarFacturasEnSheetDB(facturas) {
     try {
-        await fetch('https://sheetdb.io/api/v1/tblylxi4mrvid?sheet=facturas', {
+        await fetch('https://sheetdb.io/api/v1/342t76he2suo4?sheet=facturas', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ data: facturas }) // Enviar array
@@ -1834,12 +1821,12 @@ async function eliminarBloqueFactura(idx) {
     // 1. Obtén todas las filas con ese nombre
     let errores = 0;
     try {
-        const res = await fetch(`https://sheetdb.io/api/v1/tblylxi4mrvid/Nombre/${encodeURIComponent(nombreBloque)}?sheet=facturas`);
+        const res = await fetch(`https://sheetdb.io/api/v1/342t76he2suo4/Nombre/${encodeURIComponent(nombreBloque)}?sheet=facturas`);
         const facturas = await res.json();
         // 2. Elimina cada una por su row_id
         for (const factura of facturas) {
             if (factura.row_id) {
-                const delRes = await fetch(`https://sheetdb.io/api/v1/tblylxi4mrvid/row_id/${factura.row_id}?sheet=facturas`, {
+                const delRes = await fetch(`https://sheetdb.io/api/v1/342t76he2suo4/row_id/${factura.row_id}?sheet=facturas`, {
                     method: 'DELETE'
                 });
                 if (!delRes.ok) errores++;
@@ -1865,7 +1852,7 @@ document.getElementById('facturaSearchFolio').addEventListener('input', function
 // Al cargar la pestaña, carga los bloques desde SheetDB
 document.querySelector('button[data-tab="facturas"]').addEventListener('click', async () => {
     try {
-        const res = await fetch('https://sheetdb.io/api/v1/tblylxi4mrvid?sheet=facturas');
+        const res = await fetch('https://sheetdb.io/api/v1/342t76he2suo4?sheet=facturas');
         if (!res.ok) throw new Error('No se pudo cargar facturas');
         const facturas = await res.json();
         bloquesFacturas = [];
