@@ -374,13 +374,13 @@
         <div style="margin-top: 20px;">
             <div class="graph-container">
                 <canvas id="graphVolumen" width="150" height="50"></canvas>
-                <p style="text-align:center">espacio usado</p>
-            </div>
-            <div class="graph-container">
-                <canvas id="graphCarga" width="150" height="50"></canvas>
-                <p style="text-align:center">Carga Usada</p>
-            </div>
-        </div>
+                <p style="text-align:center">Espacio usado</p>
+           </div>
+           <div class="graph-container">
+               <canvas id="graphCarga" width="150" height="50"></canvas>
+               <p style="text-align:center">Carga Usada</p>
+           </div>
+       </div>
 
         <h3>Agregar Llanta al Pedido</h3>
 
@@ -1221,43 +1221,45 @@ function searchInventario() {
             document.getElementById('pedidoValorUnitarioLlanta').innerText = (safeNum(llanta.valor) * cantidad).toLocaleString('es-MX', {minimumFractionDigits: 2, maximumFractionDigits: 2});
         }
     }
-    function agregarPedido() {
-        if (!pedidoCamion) {
-            alert("Ingrese un número económico válido de camión primero.");
-            return;
-        }
-        const codigo = document.getElementById('pedidoCodigoLlanta').value.trim();
-        const cantidad = Number(document.getElementById('pedidoCantidadLlanta').value);
-        if (cantidad <= 0) {
-            alert("La cantidad debe ser mayor a 0.");
-            return;
-        }
-        const llanta = inventario.find(item => item.clave.toString() === codigo);
-        if (!llanta) {
-            alert("Llanta no encontrada en inventario.");
-            return;
-        }
-    const pedidoExistente = pedidosEnCurso.find(p => p.id === llanta.clave || p.clave === llanta.clave);
-        if (pedidoExistente) {
-            pedidoExistente.cantidad += cantidad;
-                pedidoExistente.peso += safeNum(getField(llanta,'peso')) * cantidad;
-                pedidoExistente.volumen += safeNum(getField(llanta,'volumen')) * cantidad;
-                pedidoExistente.valor += safeNum(getField(llanta,'valor')) * cantidad;
-        } else {
-            pedidosEnCurso.push({
-                clave: llanta.clave,
-                descripcion: llanta.descripcion,
-                linea: llanta.linea || '',
-                cantidad: cantidad,
-                    peso: safeNum(getField(llanta,'peso')) * cantidad,
-                    volumen: safeNum(getField(llanta,'volumen')) * cantidad,
-                    valor: safeNum(getField(llanta,'valor')) * cantidad
-            });
-        }
-        renderPedidosActuales();
-        actualizarGraficas();
-        resetPedidoInputs();
-    }                   
+function agregarPedido() {
+    if (!pedidoCamion) {
+        alert("Ingrese un número económico válido de camión primero.");
+        return;
+    }
+    const codigo = document.getElementById('pedidoCodigoLlanta').value.trim();
+    const cantidad = Number(document.getElementById('pedidoCantidadLlanta').value);
+    if (cantidad <= 0) {
+        alert("La cantidad debe ser mayor a 0.");
+        return;
+    }
+    const llanta = inventario.find(item => item.clave.toString() === codigo);
+    if (!llanta) {
+        alert("Llanta no encontrada en inventario.");
+        return;
+    }
+
+    const pedidoExistente = pedidosEnCurso.find(p => p.clave === llanta.clave);
+    if (pedidoExistente) {
+        pedidoExistente.cantidad += cantidad;
+        pedidoExistente.peso = safeNum(getField(llanta,'peso')) * pedidoExistente.cantidad;
+        pedidoExistente.volumen = safeNum(getField(llanta,'volumen')) * pedidoExistente.cantidad;
+        pedidoExistente.valor = safeNum(getField(llanta,'valor')) * pedidoExistente.cantidad;
+    } else {
+        pedidosEnCurso.push({
+            clave: llanta.clave,
+            descripcion: llanta.descripcion,
+            linea: llanta.linea || '',
+            cantidad: cantidad,
+            peso: safeNum(getField(llanta,'peso')) * cantidad,
+            volumen: safeNum(getField(llanta,'volumen')) * cantidad,
+            valor: safeNum(getField(llanta,'valor')) * cantidad
+        });
+    }
+
+    renderPedidosActuales();
+    actualizarGraficas(); // Aseguramos que las gráficas se actualicen
+    resetPedidoInputs();
+}              
     function editarPedido(idx) {
         const pedido = pedidosEnCurso[idx];
         const nuevaCantidad = parseInt(prompt(`Editar cantidad para ${pedido.descripcion}:`, pedido.cantidad));
@@ -1267,58 +1269,98 @@ function searchInventario() {
         const llanta = inventario.find(item => item.clave.toString() === pedido.clave);
         pedido.cantidad = nuevaCantidad;
         pedido.peso = safeNum(getField(llanta,'peso')) * nuevaCantidad;
-    pedido.volumen = safeNum(getField(llanta,'volumen')) * nuevaCantidad;
-    pedido.valor = safeNum(getField(llanta,'valor')) * nuevaCantidad;
+        pedido.volumen = safeNum(getField(llanta,'volumen')) * nuevaCantidad;
+        pedido.valor = safeNum(getField(llanta,'valor')) * nuevaCantidad;
 
         renderPedidosActuales();
         actualizarGraficas();
     }
    function renderPedidosActuales() {
        const tbody = document.querySelector('#tablaPedidosActuales tbody');
+       if (!tbody) {
+           console.error('No se encontró la tabla de pedidos actuales');
+           return;
+       }
+    
        tbody.innerHTML = '';
+
+       // Renderizar filas de pedidos
        pedidosEnCurso.forEach((pedido, idx) => {
            const tr = document.createElement('tr');
            tr.innerHTML = `
-               <td>${pedido.clave}</td>
-               <td>${pedido.descripcion}</td>
-               <td>${pedido.linea || ''}</td> 
-               <td>${pedido.cantidad}</td>
-                       <td>${(pedido.volumen || pedido.volumen===0) ? safeNum(pedido.volumen).toLocaleString('es-MX', { minimumFractionDigits: 3, maximumFractionDigits: 3 }) : '-'}</td>
-                       <td>${(pedido.peso || pedido.peso===0) ? safeNum(pedido.peso).toLocaleString('es-MX', { minimumFractionDigits: 3, maximumFractionDigits: 3 }) : '-'}</td>
-                   <td>${(pedido.valor || pedido.valor===0) ? ('$' + safeNum(pedido.valor).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })) : '-'}</td>
+               <td>${pedido.clave || '-'}</td>
+               <td>${pedido.descripcion || '-'}</td>
+               <td>${pedido.linea || '-'}</td> 
+               <td>${pedido.cantidad || 0}</td>
+               <td>${(pedido.volumen || pedido.volumen === 0) ? 
+                   safeNum(pedido.volumen).toLocaleString('es-MX', 
+                   { minimumFractionDigits: 3, maximumFractionDigits: 3 }) : '-'}</td>
+               <td>${(pedido.peso || pedido.peso === 0) ? 
+                   safeNum(pedido.peso).toLocaleString('es-MX', 
+                   { minimumFractionDigits: 3, maximumFractionDigits: 3 }) : '-'}</td>
+               <td>${(pedido.valor || pedido.valor === 0) ? 
+                   ('$' + safeNum(pedido.valor).toLocaleString('es-MX', 
+                   { minimumFractionDigits: 2, maximumFractionDigits: 2 })) : '-'}</td>
                <td>
-                   <button onclick="editarPedido(${idx})">Editar</button>
-                   <button onclick="quitarPedido(${idx})">Quitar</button>
-               </td>
-            `;
-            tbody.appendChild(tr);
-        });
-        let totalCantidad = 0, totalVolumen = 0, totalPeso = 0, totalValor = 0;
-        pedidosEnCurso.forEach(p => {
-            totalCantidad += safeNum(p.cantidad);
-            totalVolumen += safeNum(p.volumen);
-            totalPeso += safeNum(p.peso);
-            totalValor += safeNum(p.valor);
-        });
-      // ...dentro de function renderPedidosActuales()...
-    document.getElementById('totalesPedido').innerText = 
-      `Total cantidad: ${totalCantidad.toLocaleString('es-MX')} | Total volumen: ${totalVolumen.toLocaleString('es-MX', { minimumFractionDigits: 3, maximumFractionDigits: 3 })} m³ | Total peso: ${totalPeso.toLocaleString('es-MX', { minimumFractionDigits: 3, maximumFractionDigits: 3 })} kg | Total valor: $${totalValor.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-         verificarCapacidad(totalVolumen, totalPeso);
-    }
-    function resetPedidoInputs() {
-        document.getElementById('pedidoCodigoLlanta').value = '';
-        document.getElementById('pedidoDescripcionLlantaInput').value = '';
-        document.getElementById('pedidoCantidadLlanta').value = 1;
-        document.getElementById('pedidoPesoLlanta').innerText = '0';
-        document.getElementById('pedidoVolumenLlanta').innerText = '0';
-        document.getElementById('pedidoValorUnitarioLlanta').innerText = '0';
-    }
-    // ...después de function renderPedidosActuales()...
-    function limpiarPedidosActuales() {
+                  <button onclick="editarPedido(${idx})">Editar</button>
+                  <button onclick="quitarPedido(${idx})">Quitar</button>
+              </td>
+           `;
+           tbody.appendChild(tr);
+       });
+
+       // Calcular totales
+       let totalCantidad = 0, totalVolumen = 0, totalPeso = 0, totalValor = 0;
+       pedidosEnCurso.forEach(p => {
+           totalCantidad += safeNum(p.cantidad);
+           totalVolumen += safeNum(p.volumen);
+           totalPeso += safeNum(p.peso);
+           totalValor += safeNum(p.valor);
+       });
+
+       // Mostrar totales
+      const totalesPedidoElement = document.getElementById('totalesPedido');
+      if (totalesPedidoElement) {
+          totalesPedidoElement.innerText = `
+              Total cantidad: ${totalCantidad.toLocaleString('es-MX')} | 
+              Total volumen: ${totalVolumen.toLocaleString('es-MX', 
+              { minimumFractionDigits: 3, maximumFractionDigits: 3 })} m³ | 
+              Total peso: ${totalPeso.toLocaleString('es-MX', 
+              { minimumFractionDigits: 3, maximumFractionDigits: 3 })} kg | 
+              Total valor: $${totalValor.toLocaleString('es-MX', 
+              { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          `.replace(/\s+/g, ' ').trim();
+      }
+
+      // Actualizar gráficas y verificar capacidad
+      actualizarGraficas();
+      verificarCapacidad(totalVolumen, totalPeso);
+   }
+   // ...existing code...
+// Después de renderPedidosActuales() y antes de actualizarGraficas()
+
+function limpiarPedidosActuales() {
     if (confirm('¿Seguro que deseas limpiar todos los pedidos actuales del camión?')) {
-        pedidosEnCurso = [];
-        renderPedidosActuales();
-        actualizarGraficas();
+        pedidosEnCurso = []; // Limpia el array de pedidos
+        renderPedidosActuales(); // Actualiza la tabla
+        actualizarGraficas(); // Actualiza las gráficas
+        resetPedidoInputs(); // Limpia los inputs
+        
+        // Limpiar totales
+        const totalesPedidoElement = document.getElementById('totalesPedido');
+        if (totalesPedidoElement) {
+            totalesPedidoElement.innerText = 'Total cantidad: 0 | Total volumen: 0 m³ | Total peso: 0 kg | Total valor: $0';
+        }
+
+        // Actualizar las gráficas a 0
+        if (chartVolumen && chartCarga) {
+            chartVolumen.data.datasets[0].data = [0, 100];
+            chartCarga.data.datasets[0].data = [0, 100];
+            chartVolumen.update();
+            chartCarga.update();
+            document.querySelector('#graphVolumen + p').innerHTML = 'Espacio usado';
+            document.querySelector('#graphCarga + p').innerHTML = 'Carga Usada';
+        }
     }
 }
     // ----- Gráficas -----
@@ -1340,41 +1382,55 @@ function searchInventario() {
     });   
   
     function actualizarGraficas() {
-        if (!pedidoCamion) {
-            chartVolumen.data.datasets[0].data = [0, 100];
-            chartCarga.data.datasets[0].data = [0, 100];
-        } else {
-             let totalVolumen = pedidosEnCurso.reduce((acc, cur) => acc + safeNum(cur.volumen), 0);
-             let totalPeso = pedidosEnCurso.reduce((acc, cur) => acc + safeNum(cur.peso), 0);
-             let volTotal = safeNum(pedidoCamion["volumen"] || pedidoCamion.volumen);
-             let pesoTotal = safeNum(pedidoCamion["capacidad de carga (kg)"] || pedidoCamion["carga"] || pedidoCamion.carga);
-             chartVolumen.data.datasets[0].data = [Math.min(totalVolumen, volTotal), Math.max(0, volTotal - totalVolumen)];
-             chartCarga.data.datasets[0].data = [Math.min(totalPeso, pesoTotal), Math.max(0, pesoTotal - totalPeso)];
-        }
-        chartVolumen.update(); chartCarga.update();
+    if (!pedidoCamion) {
+        chartVolumen.data.datasets[0].data = [0, 100];
+        chartCarga.data.datasets[0].data = [0, 100];
+        chartVolumen.update();
+        chartCarga.update();
+        document.querySelector('#graphVolumen + p').innerHTML = 'Espacio usado';
+        document.querySelector('#graphCarga + p').innerHTML = 'Carga Usada';
+        return;
     }
-function verificarCapacidad(volumen, peso) {
-    if (!pedidoCamion) return;
-    const capVol = safeNum(pedidoCamion.volumen || pedidoCamion["volumen"]);
-    const capPes = safeNum(pedidoCamion["capacidad de carga (kg)"] || pedidoCamion.carga || pedidoCamion["carga"]);
-    const volumenPercent = (volumen / capVol) * 100,
-        pesoPercent = (peso / capPes) * 100;
-    
-    // Las alertas están temporalmente desactivadas
-    // Puedes volver a activarlas eliminando los comentarios
-    /*
-    if (volumenPercent > 85) {
-        alert('¡Advertencia! Solo queda el 15% de espacio de volumen disponible en el camión.');
-    }
-    if (pesoPercent > 85) {
-        alert('¡Advertencia! Solo queda el 15% de capacidad de carga disponible en el camión.');
-    }
-    if (volumenPercent > 80 || pesoPercent > 80) {
-        if (confirm('El camión se está llenando (>85%), ¿desea completar con otro camión?')) {
-            alert('Aquí puedes permitir solicitar otro camión para continuar cargando los pedidos.');
-        }
-    }
-    */
+
+    // Calcular totales con precisión
+    let totalVolumen = pedidosEnCurso.reduce((acc, cur) => acc + (parseFloat(cur.volumen) || 0), 0);
+    let totalPeso = pedidosEnCurso.reduce((acc, cur) => acc + (parseFloat(cur.peso) || 0), 0);
+    let volTotal = parseFloat(pedidoCamion.volumen || 0);
+    let pesoTotal = parseFloat(pedidoCamion["capacidad de carga (kg)"] || pedidoCamion.carga || 0);
+
+    // Calcular excedentes
+    let volumenExcedente = Math.max(0, totalVolumen - volTotal);
+    let pesoExcedente = Math.max(0, totalPeso - pesoTotal);
+
+    // Actualizar datos de las gráficas
+    chartVolumen.data.datasets[0].data = [
+        Math.min(totalVolumen, volTotal),
+        Math.max(0, volTotal - totalVolumen)
+    ];
+    chartCarga.data.datasets[0].data = [
+        Math.min(totalPeso, pesoTotal),
+        Math.max(0, pesoTotal - totalPeso)
+    ];
+
+    // Actualizar colores según excedentes
+    chartVolumen.data.datasets[0].backgroundColor = volumenExcedente > 0 ? 
+        ['#75c286', '#ff6b6b'] : ['#75c286', '#f3f3f3'];
+    chartCarga.data.datasets[0].backgroundColor = pesoExcedente > 0 ? 
+        ['#7ad4a2', '#ff6b6b'] : ['#7ad4a2', '#f3f3f3'];
+
+    // Forzar actualización de las gráficas
+    chartVolumen.update({duration: 0});
+    chartCarga.update({duration: 0});
+
+    // Actualizar textos
+    const volumenText = document.querySelector('#graphVolumen + p');
+    const cargaText = document.querySelector('#graphCarga + p');
+
+    volumenText.innerHTML = `Espacio usado<br>${totalVolumen.toFixed(2)}/${volTotal.toFixed(2)} m³` + 
+        (volumenExcedente > 0 ? `<br><span style="color:red">Excedente: ${volumenExcedente.toFixed(2)} m³</span>` : '');
+
+    cargaText.innerHTML = `Carga Usada<br>${totalPeso.toFixed(2)}/${pesoTotal.toFixed(2)} kg` +
+        (pesoExcedente > 0 ? `<br><span style="color:red">Excedente: ${pesoExcedente.toFixed(2)} kg</span>` : '');
 }
     // Modificada función aceptarPedido para guardar en SheetDB confirmados
     async function aceptarPedido() {
