@@ -6,7 +6,7 @@
     <title>Sistema de cubicaje - Comercializadora de Llantas Tres Siglos</title>
     <link rel="icon" type="image/png" href="https://http2.mlstatic.com/storage/mshops-appearance-api/images/13/1184895213/logo-2022082314215812800.png">
     <style>
-        /* --- Tus estilos existentes --- */
+    /* --- Tus estilos existentes --- */
         body {
             font-family: Arial, sans-serif;
             margin: 0; padding: 0;
@@ -15,8 +15,19 @@
             /* Filtro para que no distraiga */
             filter: none;
         }
-        section {
-            background: rgba(255,255,255,0.55); /* Más transparente para que se vea la imagen */
+
+        /* Agregar aquí los nuevos estilos */
+        #tablaPedidosActuales td:last-child {
+            min-width: 400px; /* Ancho mínimo para los botones */
+            white-space: nowrap; /* Evita que los botones se envuelvan */
+       }
+
+       #tablaPedidosActuales .btn {
+           margin: 2px; /* Espacio entre botones */
+           display: inline-block; /* Asegura que los botones se muestren en línea */
+     }
+    section {
+        background: rgba(255,255,255,0.55);
             border-radius: 16px;
             margin: 32px auto 16px auto;
             max-width: 1200px;
@@ -605,28 +616,76 @@ function safeNum(v) {
         }
         return undefined;
     }
-function buscarBloquePorFolio() {
+async function buscarBloquePorFolio() {
     const folio = document.getElementById('inputFolioFacturaPedido').value.trim();
     if (!folio) {
         alert('Escribe un folio para buscar.');
         return;
     }
     
-    const bloque = bloquesFacturas.find(b => 
-        b.nombre === folio || (b.datos[0]?.Folio === folio)
-    );
-    
-    if (bloque) {
+    try {
+        // Buscar primero en bloquesFacturas
+        const bloque = bloquesFacturas.find(b => 
+            b.nombre === folio || (b.datos[0]?.Folio === folio)
+        );
+
+        // Buscar en la hoja "reservados"
+        const resReservados = await fetch('https://sheetdb.io/api/v1/342t76he2suo4?sheet=reservados');
+        const reservados = await resReservados.json();
+        
+        // Agrupar reservados por nombre
+        const reservadosAgrupados = reservados.reduce((grupos, item) => {
+            if (!grupos[item.nombre]) {
+                grupos[item.nombre] = [];
+            }
+            grupos[item.nombre].push(item);
+            return grupos;
+        }, {});
+
         const div = document.getElementById('bloqueBuscadoPedido');
-        div.innerHTML = `
-            <div class="alert alert-success mt-2">
-                Bloque encontrado: ${bloque.nombre}<br>
-                Productos: ${bloque.datos.length}
-            </div>
-        `;
-    } else {
+        
+        if (bloque) {
+            div.innerHTML = `
+                <div class="alert alert-success mt-2">
+                    Bloque encontrado en facturas: ${bloque.nombre}<br>
+                    Productos: ${bloque.datos.length}
+                </div>
+            `;
+        } else if (reservadosAgrupados[folio]) {
+            const reservadosEncontrados = reservadosAgrupados[folio];
+            div.innerHTML = `
+                <div class="alert alert-info mt-2">
+                    Bloque encontrado en reservados: ${folio}<br>
+                    Productos: ${reservadosEncontrados.length}<br>
+                    <table class="table table-bordered mt-2">
+                        <thead>
+                            <tr>
+                                <th>Código</th>
+                                <th>Descripción</th>
+                                <th>Línea</th>
+                                <th>Cantidad</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${reservadosEncontrados.map(item => `
+                                <tr>
+                                    <td>${item.Código}</td>
+                                    <td>${item.Descripción}</td>
+                                    <td>${item.Línea}</td>
+                                    <td>${item.Cantidad}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            `;
+        } else {
+            div.innerHTML = '<div class="alert alert-danger mt-2">No se encontró ningún bloque con ese folio.</div>';
+        }
+    } catch (error) {
+        console.error('Error al buscar:', error);
         document.getElementById('bloqueBuscadoPedido').innerHTML = 
-            '<div class="alert alert-danger mt-2">No se encontró ningún bloque con ese folio.</div>';
+            '<div class="alert alert-danger mt-2">Error al buscar el bloque.</div>';
     }
 }
 // Pega aquí:
@@ -731,6 +790,17 @@ async function agregarBloquePorFolioPedido() {
             alert('No se pudieron cargar los pedidos confirmados: ' + e.message);
         }
     }
+    async function cargarReservas() {
+    try {
+        const res = await fetch('https://sheetdb.io/api/v1/342t76he2suo4?sheet=reservados');
+        if (!res.ok) throw new Error('Error al cargar reservas');
+        const reservas = await res.json();
+        return reservas;
+    } catch (error) {
+        console.error('Error al cargar reservas:', error);
+        return [];
+    }
+}
 
     // ----- Cambiar pestañas -----
     const tablinks = document.querySelectorAll('.tablink');
@@ -1410,6 +1480,43 @@ function agregarPedido() {
     actualizarGraficas(); // Aseguramos que las gráficas se actualicen
     resetPedidoInputs();
 }   
+async function reservarPedidoActual(idx) {
+    const pedido = pedidosEnCurso[idx];
+    if (!pedidoCamion || !pedido) return;
+
+    try {
+        // Crear registro para la hoja reservados
+        const registroReserva = {
+            nombre: `${pedidoCamion.economico}_1`,
+            Código: pedido.clave,
+            Descripción: pedido.descripcion,
+            Línea: pedido.linea,
+            Cantidad: pedido.cantidad,
+            'Volumen Total': pedido.volumen,
+            'Peso Total': pedido.peso,
+            'Valor Total ($)': pedido.valor
+        };
+
+        // Guardar en la hoja "reservados"
+        const res = await fetch('https://sheetdb.io/api/v1/342t76he2suo4?sheet=reservados', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ data: registroReserva })
+        });
+
+        if (!res.ok) throw new Error('Error al guardar reserva');
+
+        // Quitar el pedido de la lista actual
+        pedidosEnCurso.splice(idx, 1);
+        renderPedidosActuales();
+        actualizarGraficas();
+        alert('Pedido reservado exitosamente');
+
+    } catch (error) {
+        console.error('Error al reservar:', error);
+        alert('Error al reservar el pedido: ' + error.message);
+    }
+}
 
  function quitarPedido(idx) {
     if (confirm('¿Seguro que desea quitar esta llanta del pedido?')) {
@@ -1465,6 +1572,7 @@ function agregarPedido() {
                <td>
                    <button onclick="editarPedido(${idx})" class="btn btn-sm btn-primary">Editar</button>
                    <button onclick="quitarPedido(${idx})" class="btn btn-sm btn-danger">Quitar</button>
+                   <button onclick="reservarPedidoActual(${idx})" class="btn btn-sm btn-success">Reservar</button>
               </td>
            `;
            tbody.appendChild(tr);
@@ -1660,7 +1768,7 @@ function actualizarGraficas() {
     }
 
     // -- Renderizar pedidos confirmados --
-    function renderPedidosConfirmados() {
+function renderPedidosConfirmados() {
     const tbody = document.querySelector('#tabla tbody');
     tbody.innerHTML = '';
     pedidosConfirmados.forEach((pedido, idx) => {
@@ -1682,7 +1790,11 @@ function actualizarGraficas() {
             <td>${Number(pedido.peso).toLocaleString('es-MX', { minimumFractionDigits: 3, maximumFractionDigits: 3 })}</td>
             <td>$${Number(pedido.valor).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
             <td>${pedido.fecha || ''}</td>
-            <td><button onclick="cancelarPedido(${idx})">Cancelar</button></td>`;
+            <td style="min-width: 300px;">
+               <button onclick="editarPedidoConfirmado(${idx})" class="btn btn-sm btn-primary">Editar</button>
+                <button onclick="cancelarPedido(${idx})" class="btn btn-sm btn-danger">Quitar</button>
+                <button onclick="reservarPedido(${idx})" class="btn btn-sm btn-success">Reservar</button>
+            </td>`;
         tbody.appendChild(tr);
     }); 
 }
@@ -1694,7 +1806,58 @@ function actualizarGraficas() {
             renderPedidosConfirmados();
         }
     }
+     async function reservarPedido(idx) {
+    const pedido = pedidosConfirmados[idx];
+    if (!pedido) return;
+
+    try {
+        // Separar los datos en registros individuales
+        const llantas = pedido.llantas.split(',').map(l => l.trim());
+        const descripciones = pedido.descripcion.split(',').map(d => d.trim());
+        const cantidades = pedido.cantidad.split(',').map(c => c.trim());
+        const lineas = pedido.linea.split(',').map(l => l.trim());
+
+        // Nombre del bloque con sufijo _1
+        const nombreBloque = `${pedido.camion}_1`;
+
+        // Crear registros individuales para cada llanta
+        const registrosReserva = llantas.map((llanta, i) => ({
+            nombre: nombreBloque, // El mismo nombre_1 para todas las llantas del bloque
+            Código: llanta,
+            Descripción: descripciones[i] || '',
+            Línea: lineas[i] || '',
+            Cantidad: cantidades[i] || '0',
+            'Volumen Total': (Number(pedido.volumen) / llantas.length).toFixed(3),
+            'Peso Total': (Number(pedido.peso) / llantas.length).toFixed(3),
+            'Valor Total ($)': (Number(pedido.valor) / llantas.length).toFixed(2)
+        }));
+
+        // Guardar en la hoja "reservados"
+        const res = await fetch('https://sheetdb.io/api/v1/342t76he2suo4?sheet=reservados', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ data: registrosReserva })
+        });
+
+        if (!res.ok) throw new Error('Error al guardar reserva');
+
+        // Eliminar el pedido de confirmados
+        await fetch(`https://sheetdb.io/api/v1/342t76he2suo4/camion/${pedido.camion}?sheet=confirmados`, {
+            method: 'DELETE'
+        });
+
+        // Actualizar la interfaz
+        pedidosConfirmados.splice(idx, 1);
+        renderPedidosConfirmados();
+        alert('Pedido reservado exitosamente');
+
+    } catch (error) {
+        console.error('Error al reservar:', error);
+        alert('Error al reservar el pedido: ' + error.message);
+    }
+}
 </script>
+
          
 <!-- Modal instrucciones -->
 <div id="modalInstrucciones" class="modal">
