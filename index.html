@@ -645,8 +645,11 @@ function safeNum(v) {
     }
 async function buscarBloquePorFolio() {
     const folio = document.getElementById('inputFolioFacturaPedido').value.trim();
+    const div = document.getElementById('bloqueBuscadoPedido');
+    
+    // Si no hay folio, limpiar el div y retornar
     if (!folio) {
-        alert('Escribe un folio para buscar.');
+        div.innerHTML = '';
         return;
     }
     
@@ -669,8 +672,6 @@ async function buscarBloquePorFolio() {
             return grupos;
         }, {});
 
-        const div = document.getElementById('bloqueBuscadoPedido');
-        
         if (bloque) {
             div.innerHTML = `
                 <div class="alert alert-success mt-2">
@@ -706,15 +707,22 @@ async function buscarBloquePorFolio() {
                     </table>
                 </div>
             `;
-        } else {
+        } else if (folio) { // Solo mostrar mensaje de no encontrado si se ingresó un folio
             div.innerHTML = '<div class="alert alert-danger mt-2">No se encontró ningún bloque con ese folio.</div>';
         }
     } catch (error) {
         console.error('Error al buscar:', error);
-        document.getElementById('bloqueBuscadoPedido').innerHTML = 
-            '<div class="alert alert-danger mt-2">Error al buscar el bloque.</div>';
+        if (folio) { // Solo mostrar error si se ingresó un folio
+            div.innerHTML = '<div class="alert alert-danger mt-2">Error al buscar el bloque.</div>';
+        }
     }
 }
+// Agregar este evento para limpiar el mensaje cuando se borre el input
+document.getElementById('inputFolioFacturaPedido').addEventListener('input', function() {
+    if (!this.value.trim()) {
+        document.getElementById('bloqueBuscadoPedido').innerHTML = '';
+    }
+});
 // Pega aquí:
 // Reemplazar la función existente agregarBloquePorFolioPedido()
 async function agregarBloquePorFolioPedido() {
@@ -1997,7 +2005,6 @@ function renderPedidosConfirmados() {
             <td style="min-width: 300px;">
                <button onclick="editarPedidoConfirmado(${idx})" class="btn btn-sm btn-primary">Editar</button>
                 <button onclick="cancelarPedido(${idx})" class="btn btn-sm btn-danger">Quitar</button>
-                <button onclick="reservarPedido(${idx})" class="btn btn-sm btn-success">Reservar</button>
             </td>`;
         tbody.appendChild(tr);
     }); 
