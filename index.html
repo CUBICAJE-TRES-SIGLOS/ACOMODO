@@ -1548,19 +1548,13 @@ function limpiarPedidosActuales() {
         },
         options: { plugins: {legend: {display: true}}, cutout: '70%' }
     });   
-  function verificarCapacidad(totalVolumen, totalPeso) {
+ function verificarCapacidad(totalVolumen, totalPeso) {
     if (!pedidoCamion) return;
     
-    const volumenMax = safeNum(pedidoCamion.volumen);
-    const pesoMax = safeNum(pedidoCamion["capacidad de carga (kg)"]);
-    
-    if (totalVolumen > volumenMax) {
-        alert(`¡Advertencia! El volumen total (${totalVolumen.toFixed(2)} m³) excede la capacidad del camión (${volumenMax.toFixed(2)} m³)`);
-    }
-    
-    if (totalPeso > pesoMax) {
-        alert(`¡Advertencia! El peso total (${totalPeso.toFixed(2)} kg) excede la capacidad del camión (${pesoMax.toFixed(2)} kg)`);
-    }
+    // Ya no mostramos alertas aquí
+    // Solo actualizamos las gráficas a través de actualizarGraficas()
+    // que ya maneja la visualización del excedente con colores rojos
+    return;
 }
 
 function actualizarGraficas() {
