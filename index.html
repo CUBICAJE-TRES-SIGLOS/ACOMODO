@@ -7,20 +7,48 @@
     <link rel="icon" type="image/png" href="https://http2.mlstatic.com/storage/mshops-appearance-api/images/13/1184895213/logo-2022082314215812800.png">
     <style>
     /* --- Tus estilos existentes --- */
-      body {
-          font-family: Arial, sans-serif;
-          margin: 0; 
-          padding: 0;
-          background: url('https://www.tersallantas.com/wp-content/uploads/2024/03/bg-promo-tersa-permanente.jpg') no-repeat center fixed;
-          background-size: cover;
-          filter: none;
-        }
 
-        /* Agregar aquí los nuevos estilos */
-        #tablaPedidosActuales td:last-child {
-            min-width: 400px; /* Ancho mínimo para los botones */
-            white-space: nowrap; /* Evita que los botones se envuelvan */
-       }
+
+    body {
+        background-image: url('https://www.romacarabs.com/wp-content/uploads/2024/05/Llantas-de-un-coche.jpg');
+        background-size: cover;
+        background-position: center;
+        background-attachment: fixed;
+        background-repeat: no-repeat;
+        min-height: 100vh;
+        margin: 0;
+        padding: 20px;
+    }
+
+    /* Ajustar opacidad del fondo de las secciones para mejor legibilidad */
+    section {
+        background: rgba(255,255,255,0.95);
+        backdrop-filter: blur(5px);
+    }
+
+    /* Mejorar visibilidad del header */
+    header {
+        background: rgba(255,255,255,0.95);
+        padding: 15px;
+        border-radius: 10px;
+        margin-bottom: 20px;
+        backdrop-filter: blur(5px);
+        display: flex;
+        align-items: center;
+    }
+
+    /* Ajustar nav para que se vea mejor con el fondo */
+    nav {
+        background: rgba(176, 218, 185, 0.95);
+        border-radius: 10px;
+        backdrop-filter: blur(5px);
+    }
+
+    /* Agregar aquí los nuevos estilos */
+    #tablaPedidosActuales td:last-child {
+        min-width: 400px; /* Ancho mínimo para los botones */
+        white-space: nowrap; /* Evita que los botones se envuelvan */
+   }
 
        #tablaPedidosActuales .btn {
            margin: 2px; /* Espacio entre botones */
