@@ -742,7 +742,7 @@ async function buscarBloquePorFolio() {
         );
 
         // Buscar en la hoja "reservados"
-        const resReservados = await fetch('https://sheetdb.io/api/v1/6m8hwax9w68yb?sheet=reservados');
+        const resReservados = await fetch('https://sheetdb.io/api/v1/1m40us1hxnmiq?sheet=reservados');
         const reservados = await resReservados.json();
         
         // Agrupar reservados por nombre
@@ -816,7 +816,7 @@ async function agregarBloquePorFolioPedido() {
 
     try {
         // Primero buscar en la hoja "reservados"
-        const resReservados = await fetch('https://sheetdb.io/api/v1/6m8hwax9w68yb?sheet=reservados');
+        const resReservados = await fetch('https://sheetdb.io/api/v1/1m40us1hxnmiq?sheet=reservados');
         const reservados = await resReservados.json();
         const reservadosDelFolio = reservados.filter(r => r.nombre === folio);
 
@@ -929,7 +929,7 @@ async function agregarBloquePorFolioPedido() {
     // ---------- Funciones para cargar datos ---------
     async function fetchInventario() {
         try {
-            const res = await fetch('https://sheetdb.io/api/v1/6m8hwax9w68yb');
+            const res = await fetch('https://sheetdb.io/api/v1/1m40us1hxnmiq');
             if (!res.ok) throw new Error('Error al cargar inventario');
             inventario = await res.json();
             renderInventario();
@@ -939,7 +939,7 @@ async function agregarBloquePorFolioPedido() {
     }
     async function fetchFlota() {
         try {
-            const res = await fetch('https://sheetdb.io/api/v1/6m8hwax9w68yb?sheet=flota');
+            const res = await fetch('https://sheetdb.io/api/v1/1m40us1hxnmiq?sheet=flota');
             if (!res.ok) throw new Error('Error al cargar flota');
             flota = await res.json();
             renderFlota();
@@ -953,7 +953,7 @@ async function agregarBloquePorFolioPedido() {
     // Función para cargar pedidos confirmados desde hoja
     async function fetchPedidosConfirmados() {
         try {
-            const res = await fetch('https://sheetdb.io/api/v1/6m8hwax9w68yb?sheet=confirmados');
+            const res = await fetch('https://sheetdb.io/api/v1/1m40us1hxnmiq?sheet=confirmados');
             if (!res.ok) throw new Error('Error al cargar pedidos confirmados');
             pedidosConfirmados = await res.json();
             renderPedidosConfirmados();
@@ -963,7 +963,7 @@ async function agregarBloquePorFolioPedido() {
     }
     async function cargarReservas() {
     try {
-        const res = await fetch('https://sheetdb.io/api/v1/6m8hwax9w68yb?sheet=reservados');
+        const res = await fetch('https://sheetdb.io/api/v1/1m40us1hxnmiq?sheet=reservados');
         if (!res.ok) throw new Error('Error al cargar reservas');
         const reservas = await res.json();
         return reservas;
@@ -1036,7 +1036,7 @@ function renderInventario() {
    async function eliminarLlanta(clave) {
      if (!confirm('¿Seguro que deseas eliminar esta llanta?')) return;
      try {
-       const res = await fetch(`https://sheetdb.io/api/v1/6m8hwax9w68yb/clave/${clave}`, {
+       const res = await fetch(`https://sheetdb.io/api/v1/1m40us1hxnmiq/clave/${clave}`, {
          method: 'DELETE'
       });
       if (!res.ok) throw new Error('No se pudo eliminar');
@@ -1075,7 +1075,7 @@ async function guardarEdicionLlanta(clave) {
     };
 
     try {
-        const res = await fetch(`https://sheetdb.io/api/v1/6m8hwax9w68yb/clave/${clave}`, {
+        const res = await fetch(`https://sheetdb.io/api/v1/1m40us1hxnmiq/clave/${clave}`, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ data: nuevosDatos })
@@ -1108,7 +1108,7 @@ async function calcularVolumenInventario() {
         inventario.sort((a, b) => Number(a.clave) - Number(b.clave));
         
         // Factor base para espacio logístico
-        const margenLogistico = 1.60;
+        const margenLogistico = 1.30;
 
         for (const llanta of inventario) {
             if (!llanta.volumen || Number(llanta.volumen) === 0) {
@@ -1229,7 +1229,7 @@ async function calcularVolumenInventario() {
                 const newVol = volumen_m3.toFixed(4);
 
                 try {
-                    const res = await fetch(`https://sheetdb.io/api/v1/6m8hwax9w68yb/clave/${llanta.clave}`, {
+                    const res = await fetch(`https://sheetdb.io/api/v1/1m40us1hxnmiq/clave/${llanta.clave}`, {
                         method: 'PATCH',
                         headers: {'Content-Type': 'application/json'},
                         body: JSON.stringify({ data: { volumen: newVol } })
@@ -1349,7 +1349,7 @@ function searchInventario() {
     const nuevoDato = { id, clave: id, descripcion, peso, volumen, valor, "Línea": Línea };
 
         try {
-            const res = await fetch('https://sheetdb.io/api/v1/6m8hwax9w68yb/id', {
+            const res = await fetch('https://sheetdb.io/api/v1/1m40us1hxnmiq/id', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ data: nuevoDato })
@@ -1424,7 +1424,7 @@ function searchInventario() {
      async function eliminarCamion(economico) {
        if (!confirm('¿Seguro que deseas eliminar este camión?')) return;
        try {
-         const res = await fetch(`https://sheetdb.io/api/v1/6m8hwax9w68yb/economico/${economico}?sheet=flota`, {
+         const res = await fetch(`https://sheetdb.io/api/v1/1m40us1hxnmiq/economico/${economico}?sheet=flota`, {
            method: 'DELETE'
          });
          if (!res.ok) throw new Error('No se pudo eliminar');
@@ -1458,7 +1458,7 @@ function searchInventario() {
         volumen: document.getElementById('editCamionVolumen').value
       };
       try {
-        const res = await fetch(`https://sheetdb.io/api/v1/6m8hwax9w68yb/economico/${economico}?sheet=flota`, {
+        const res = await fetch(`https://sheetdb.io/api/v1/1m40us1hxnmiq/economico/${economico}?sheet=flota`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ data: nuevosDatos })
@@ -1514,7 +1514,7 @@ function searchInventario() {
         };
 
         try {
-            const res = await fetch('https://sheetdb.io/api/v1/6m8hwax9w68yb?sheet=flota', {
+            const res = await fetch('https://sheetdb.io/api/v1/1m40us1hxnmiq?sheet=flota', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ data: nuevoDato })
@@ -1694,7 +1694,7 @@ async function reservarPedidoActual(idx) {
         };
 
         // Guardar en la hoja de reservados
-        const res = await fetch('https://sheetdb.io/api/v1/6m8hwax9w68yb?sheet=reservados', {
+        const res = await fetch('https://sheetdb.io/api/v1/1m40us1hxnmiq?sheet=reservados', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ data: registroReserva })
@@ -2047,7 +2047,7 @@ async function aceptarPedido() {
         };
 
         try {
-            const res = await fetch('https://sheetdb.io/api/v1/6m8hwax9w68yb?sheet=confirmados', {
+            const res = await fetch('https://sheetdb.io/api/v1/1m40us1hxnmiq?sheet=confirmados', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ data: nuevoPedido })
@@ -2138,7 +2138,7 @@ function renderPedidosConfirmados() {
             'Valor Total ($)': (Number(pedido.valor) / llantas.length).toFixed(2)
         }));
 
-        const res = await fetch('https://sheetdb.io/api/v1/6m8hwax9w68yb?sheet=reservados', {
+        const res = await fetch('https://sheetdb.io/api/v1/1m40us1hxnmiq?sheet=reservados', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ data: registrosReserva })
@@ -2146,7 +2146,7 @@ function renderPedidosConfirmados() {
 
         if (!res.ok) throw new Error('Error al guardar reserva');
 
-        await fetch(`https://sheetdb.io/api/v1/6m8hwax9w68yb/camion/${pedido.camion}?sheet=confirmados`, {
+        await fetch(`https://sheetdb.io/api/v1/1m40us1hxnmiq/camion/${pedido.camion}?sheet=confirmados`, {
             method: 'DELETE'
         });
 
@@ -2241,7 +2241,7 @@ async function agregarNuevosProductosAlInventario(productos) {
         // 2. Obtener el inventario actual con manejo de errores mejorado
         let inventarioActual;
         try {
-            const res = await fetch('https://sheetdb.io/api/v1/6m8hwax9w68yb');
+            const res = await fetch('https://sheetdb.io/api/v1/1m40us1hxnmiq');
             if (!res.ok) throw new Error(`Error HTTP: ${res.status}`);
             inventarioActual = await res.json();
         } catch (error) {
@@ -2304,7 +2304,7 @@ async function agregarNuevosProductosAlInventario(productos) {
             const productosValidos = nuevosDatos.filter(Boolean);
             if (productosValidos.length > 0) {
                 try {
-                    const resAdd = await fetch('https://sheetdb.io/api/v1/6m8hwax9w68yb', {
+                    const resAdd = await fetch('https://sheetdb.io/api/v1/1m40us1hxnmiq', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ data: productosValidos })
@@ -2572,7 +2572,7 @@ document.getElementById('btnTerminarBloqueFactura').onclick = async () => {
 // Guardar en SheetDB (más rápido: POST en lote)
 async function guardarFacturasEnSheetDB(facturas) {
     try {
-        await fetch('https://sheetdb.io/api/v1/6m8hwax9w68yb?sheet=facturas', {
+        await fetch('https://sheetdb.io/api/v1/1m40us1hxnmiq?sheet=facturas', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ data: facturas }) // Enviar array
@@ -2732,12 +2732,12 @@ async function eliminarBloqueFactura(idx) {
     // 1. Obtén todas las filas con ese nombre
     let errores = 0;
     try {
-        const res = await fetch(`https://sheetdb.io/api/v1/6m8hwax9w68yb/Nombre/${encodeURIComponent(nombreBloque)}?sheet=facturas`);
+        const res = await fetch(`https://sheetdb.io/api/v1/1m40us1hxnmiq/Nombre/${encodeURIComponent(nombreBloque)}?sheet=facturas`);
         const facturas = await res.json();
         // 2. Elimina cada una por su row_id
         for (const factura of facturas) {
             if (factura.row_id) {
-                const delRes = await fetch(`https://sheetdb.io/api/v1/6m8hwax9w68yb/row_id/${factura.row_id}?sheet=facturas`, {
+                const delRes = await fetch(`https://sheetdb.io/api/v1/1m40us1hxnmiq/row_id/${factura.row_id}?sheet=facturas`, {
                     method: 'DELETE'
                 });
                 if (!delRes.ok) errores++;
@@ -2763,7 +2763,7 @@ document.getElementById('facturaSearchFolio').addEventListener('input', function
 // Al cargar la pestaña, carga los bloques desde SheetDB
 document.querySelector('button[data-tab="facturas"]').addEventListener('click', async () => {
     try {
-        const res = await fetch('https://sheetdb.io/api/v1/6m8hwax9w68yb?sheet=facturas');
+        const res = await fetch('https://sheetdb.io/api/v1/1m40us1hxnmiq?sheet=facturas');
         if (!res.ok) throw new Error('No se pudo cargar facturas');
         const facturas = await res.json();
         bloquesFacturas = [];
