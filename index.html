@@ -1093,17 +1093,17 @@ async function guardarEdicionLlanta(clave) {
 }
 // Después de editarLlanta() y antes de guardarEdicionLlanta()
 async function calcularVolumenInventario() {
-    let updatedRows = [];
+    let filasActualizadas = [];
     let noCalculadas = [];
-    let failedRows = [];
+    let filasFallidas = [];
 
     try {
         mostrarEstado('Iniciando cálculos...');
-        const loadingMsg = document.getElementById('loadingMessage');
-        if (loadingMsg) loadingMsg.style.display = 'block';
+        const mensajeCarga = document.getElementById('loadingMessage');
+        if (mensajeCarga) mensajeCarga.style.display = 'block';
         
-        const calcBtn = document.querySelector('button[onclick="calcularVolumenInventario()"]');
-        if (calcBtn) calcBtn.disabled = true;
+        const botonCalc = document.querySelector('button[onclick="calcularVolumenInventario()"]');
+        if (botonCalc) botonCalc.disabled = true;
 
         inventario.sort((a, b) => Number(a.clave) - Number(b.clave));
         
@@ -1117,7 +1117,25 @@ async function calcularVolumenInventario() {
 
                 // Patrones para diferentes tipos de llantas
                 const patrones = [
-                    // 1. Llantas de Auto/SUV: 185/60 R14, 185 60 R14, P185/60R14
+                    // 1. Patrón específico para llantas 11L-16 y similares
+                    {
+                        regex: /^(\d{2})L-(\d{2})\s*(?:\((\d{1,2})\))?\s*((?:SKS|F3|IND|AGRO|CT).*)?/i,
+                        calc: (m) => {
+                            const ancho = Number(m[1]) * 25.4 * 1.15 / 1000; // 15% más ancho
+                            const rin = Number(m[2]) * 0.0254;
+                            const capas = m[3] ? Number(m[3]) : 12; // Por defecto 12 capas
+                            const tipo = m[4]?.includes('IND') || m[4]?.includes('SKS') ? 'INDUSTRIAL' : 
+                                       m[4]?.includes('AGRO') ? 'AGRICOLA' : 'INDUSTRIAL';
+                            return {
+                                ancho,
+                                perfil: 0.90, // Perfil fijo para industrial/agrícola
+                                rin,
+                                tipo,
+                                capas
+                            };
+                        }
+                    },
+                    // 2. Llantas de Auto/SUV: 185/60 R14
                     {
                         regex: /^[P]?(\d{3})[\/\s\-](\d{2})[\/\s\-]?R?(\d{2})/,
                         calc: (m) => ({
@@ -1127,7 +1145,7 @@ async function calcularVolumenInventario() {
                             tipo: 'AUTO'
                         })
                     },
-                    // 2. Llantas de Camión: 11R22.5, 12R24.5, 295/75R22.5
+                    // 3. Llantas de Camión: 11R22.5
                     {
                         regex: /^(\d{2,3})R(\d{2}\.?\d*)|(^\d{3}\/\d{2}R\d{2}\.?\d*)/,
                         calc: (m) => ({
@@ -1137,17 +1155,7 @@ async function calcularVolumenInventario() {
                             tipo: 'CAMION'
                         })
                     },
-                    // 3. Llantas All Terrain/4x4: LT245/75R16, 31X10.50R15
-                    {
-                        regex: /^(?:LT)?(\d{3})[\/](\d{2})R(\d{2})|(\d{2})X(\d{2,3}\.?\d*)R(\d{2})/,
-                        calc: (m) => ({
-                            ancho: Number(m[1] || m[5]) / 1000,
-                            perfil: Number(m[2] || 80) / 100,
-                            rin: Number(m[3] || m[6]) * 0.0254,
-                            tipo: '4X4'
-                        })
-                    },
-                    // 4. Llantas Agrícolas: 7.50-16, 12.5/80-18, 14.9-24
+                    // 4. Llantas agrícolas tradicionales
                     {
                         regex: /^(\d{1,2}\.?\d*)[\/\-](?:(\d{2})[\/\-])?(\d{2})/,
                         calc: (m) => ({
@@ -1156,37 +1164,26 @@ async function calcularVolumenInventario() {
                             rin: Number(m[3]) * 0.0254,
                             tipo: 'AGRICOLA'
                         })
-                    },
-                    // 5. Llantas OTR/Industriales: 23.5-25, 26.5-25, 29.5-25
-                    {
-                        regex: /^(\d{2}\.?\d*)[\/\-](\d{2})/,
-                        calc: (m) => ({
-                            ancho: Number(m[1]) * 25.4 / 1000,
-                            perfil: 1.00, // Perfil típico para OTR
-                            rin: Number(m[2]) * 0.0254,
-                            tipo: 'OTR'
-                        })
                     }
                 ];
 
                 let medidas = null;
                 let tipoLlanta = '';
 
-                // Determinar tipo de llanta por descripción
-                const desc_upper = desc.toUpperCase();
-                if (desc_upper.includes('AGRICOLA') || desc_upper.includes('TRACTOR')) {
+                // Determinar tipo por descripción
+                if (desc.includes('AGRICOLA') || desc.includes('TRACTOR')) {
                     tipoLlanta = 'AGRICOLA';
-                } else if (desc_upper.includes('CAMION') || desc_upper.includes('TRAILER')) {
+                } else if (desc.includes('INDUSTRIAL') || desc.includes('OTR')) {
+                    tipoLlanta = 'INDUSTRIAL';
+                } else if (desc.includes('CAMION')) {
                     tipoLlanta = 'CAMION';
-                } else if (desc_upper.includes('INDUSTRIAL') || desc_upper.includes('OTR')) {
-                    tipoLlanta = 'OTR';
-                } else if (desc_upper.includes('4X4') || desc_upper.includes('AT')) {
+                } else if (desc.includes('4X4')) {
                     tipoLlanta = '4X4';
                 } else {
                     tipoLlanta = 'AUTO';
                 }
 
-                // Intentar encontrar patrón que coincida
+                // Buscar patrón coincidente
                 for (const patron of patrones) {
                     const match = desc.match(patron.regex);
                     if (match) {
@@ -1203,14 +1200,14 @@ async function calcularVolumenInventario() {
                     continue;
                 }
 
-                // Factores de corrección según tipo
+                // Factores de corrección específicos
                 let factorCorreccion;
                 switch (tipoLlanta) {
                     case 'AGRICOLA':
-                        factorCorreccion = 1.8;
+                        factorCorreccion = desc.includes('L-') ? 1.9 : 1.8;
                         break;
-                    case 'OTR':
-                        factorCorreccion = 2.0;
+                    case 'INDUSTRIAL':
+                        factorCorreccion = desc.includes('SKS') ? 2.1 : 2.0;
                         break;
                     case 'CAMION':
                         factorCorreccion = 1.5;
@@ -1218,33 +1215,53 @@ async function calcularVolumenInventario() {
                     case '4X4':
                         factorCorreccion = 1.3;
                         break;
-                    default: // AUTO
+                    default:
                         factorCorreccion = 1.0;
                 }
 
-                // Cálculo del volumen
-                let alturaFlanco = medidas.perfil * medidas.ancho;
-                let diametroExterno = medidas.rin + 2 * alturaFlanco;
-                let volumen_m3 = Math.PI * Math.pow(diametroExterno/2, 2) * medidas.ancho * factorCorreccion * margenLogistico;
-                const newVol = volumen_m3.toFixed(4);
+                // Ajustes adicionales para SKS y patrones especiales
+                if (desc.match(/SKS-[1-3]|L-5/)) {
+                    factorCorreccion *= 1.1; // 10% adicional
+                }
+
+                // Cálculo de volumen optimizado
+                let volumen_m3;
+                if (tipoLlanta === 'INDUSTRIAL' || tipoLlanta === 'AGRICOLA') {
+                    let alturaFlanco = medidas.perfil * medidas.ancho;
+                    let diametroExterno = (medidas.rin + 2 * alturaFlanco) * 1.08;
+                    volumen_m3 = Math.PI * Math.pow(diametroExterno/2, 2) * medidas.ancho * 
+                                factorCorreccion * margenLogistico;
+                    
+                    // Ajuste por número de capas
+                    if (medidas.capas && medidas.capas > 12) {
+                        volumen_m3 *= (1 + (medidas.capas - 12) * 0.02);
+                    }
+                } else {
+                    let alturaFlanco = medidas.perfil * medidas.ancho;
+                    let diametroExterno = medidas.rin + 2 * alturaFlanco;
+                    volumen_m3 = Math.PI * Math.pow(diametroExterno/2, 2) * medidas.ancho * 
+                                factorCorreccion * margenLogistico;
+                }
+
+                const nuevoVolumen = volumen_m3.toFixed(4);
 
                 try {
                     const res = await fetch(`https://sheetdb.io/api/v1/1m40us1hxnmiq/clave/${llanta.clave}`, {
                         method: 'PATCH',
                         headers: {'Content-Type': 'application/json'},
-                        body: JSON.stringify({ data: { volumen: newVol } })
+                        body: JSON.stringify({ data: { volumen: nuevoVolumen } })
                     });
 
-                    if (!res.ok) throw new Error('PATCH falló con status ' + res.status);
-                    llanta.volumen = newVol;
-                    updatedRows.push({ 
+                    if (!res.ok) throw new Error('Error en PATCH: ' + res.status);
+                    llanta.volumen = nuevoVolumen;
+                    filasActualizadas.push({ 
                         clave: llanta.clave, 
-                        volumen: newVol,
+                        volumen: nuevoVolumen,
                         tipo: tipoLlanta 
                     });
                     await new Promise(r => setTimeout(r, 120));
                 } catch (err) {
-                    failedRows.push({ 
+                    filasFallidas.push({ 
                         clave: llanta.clave, 
                         descripcion: llanta.descripcion || '', 
                         error: err.message 
@@ -1254,14 +1271,14 @@ async function calcularVolumenInventario() {
         }
 
         renderInventario();
-        mostrarResultadosCalculo(noCalculadas, updatedRows, failedRows);
+        mostrarResultadosCalculo(noCalculadas, filasActualizadas, filasFallidas);
 
     } catch (error) {
         console.error('Error en cálculos:', error);
         mostrarEstado(`Error: ${error.message}`, 'error');
     } finally {
-        if (loadingMsg) loadingMsg.style.display = 'none';
-        if (calcBtn) calcBtn.disabled = false;
+        if (mensajeCarga) mensajeCarga.style.display = 'none';
+        if (botonCalc) botonCalc.disabled = false;
     }
 }
 
@@ -1603,32 +1620,93 @@ function searchInventario() {
         }
     }
     function calcularTotalesPedido() {
-        const cantidad = Number(document.getElementById('pedidoCantidadLlanta').value);
-        const codigo = document.getElementById('pedidoCodigoLlanta').value.trim();
-        const llanta = inventario.find(item => item.clave.toString() === codigo);
-        if (llanta && cantidad > 0) {
-            document.getElementById('pedidoPesoLlanta').innerText = (safeNum(llanta.peso) * cantidad).toLocaleString('es-MX', {minimumFractionDigits: 2, maximumFractionDigits: 2});
-            document.getElementById('pedidoVolumenLlanta').innerText = (safeNum(llanta.volumen) * cantidad).toLocaleString('es-MX', {minimumFractionDigits: 4, maximumFractionDigits: 4});
-            document.getElementById('pedidoValorUnitarioLlanta').innerText = (safeNum(llanta.valor) * cantidad).toLocaleString('es-MX', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+    const cantidad = Number(document.getElementById('pedidoCantidadLlanta').value);
+    const codigo = document.getElementById('pedidoCodigoLlanta').value.trim();
+    const llanta = inventario.find(item => item.clave.toString() === codigo);
+    
+    if (llanta && cantidad > 0) {
+        // Calcular totales
+        document.getElementById('pedidoPesoLlanta').innerText = 
+            (safeNum(llanta.peso) * cantidad).toLocaleString('es-MX', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+        document.getElementById('pedidoVolumenLlanta').innerText = 
+            (safeNum(llanta.volumen) * cantidad).toLocaleString('es-MX', {minimumFractionDigits: 4, maximumFractionDigits: 4});
+        document.getElementById('pedidoValorUnitarioLlanta').innerText = 
+            (safeNum(llanta.valor) * cantidad).toLocaleString('es-MX', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+
+        // Verificar capacidad preventivamente
+        if (pedidoCamion) {
+            const volumenTotal = safeNum(llanta.volumen) * cantidad;
+            const pesoTotal = safeNum(llanta.peso) * cantidad;
+            
+            // Calcular totales actuales del pedido
+            const pedidoActualVolumen = pedidosEnCurso.reduce((acc, cur) => acc + safeNum(cur.volumen), 0);
+            const pedidoActualPeso = pedidosEnCurso.reduce((acc, cur) => acc + safeNum(cur.peso), 0);
+            
+            // Calcular nuevos totales incluyendo la llanta actual
+            const nuevoVolumenTotal = pedidoActualVolumen + volumenTotal;
+            const nuevoPesoTotal = pedidoActualPeso + pesoTotal;
+            
+            // Obtener capacidades del camión
+            const capacidadVolumen = safeNum(pedidoCamion.volumen);
+            const capacidadPeso = safeNum(pedidoCamion["capacidad de carga (kg)"]) || safeNum(pedidoCamion.carga);
+            
+            // Calcular porcentajes
+            const porcentajeVolumen = (nuevoVolumenTotal / capacidadVolumen) * 100;
+            const porcentajePeso = (nuevoPesoTotal / capacidadPeso) * 100;
+            
+            // Mostrar advertencia si supera el 95%
+            if (porcentajeVolumen > 95 || porcentajePeso > 95) {
+                mostrarAlertaCapacidad(
+                    capacidadVolumen - nuevoVolumenTotal,
+                    capacidadPeso - nuevoPesoTotal,
+                    porcentajeVolumen,
+                    porcentajePeso
+                );
+            }
         }
     }
+}
 function agregarPedido() {
     if (!pedidoCamion) {
         alert("Ingrese un número económico válido de camión primero.");
         return;
     }
+
     const codigo = document.getElementById('pedidoCodigoLlanta').value.trim();
     const cantidad = Number(document.getElementById('pedidoCantidadLlanta').value);
+    
     if (cantidad <= 0) {
         alert("La cantidad debe ser mayor a 0.");
         return;
     }
+
     const llanta = inventario.find(item => item.clave.toString() === codigo);
     if (!llanta) {
         alert("Llanta no encontrada en inventario.");
         return;
     }
 
+    // Calcular volumen y peso adicional
+    const volumenAdicional = safeNum(llanta.volumen) * cantidad;
+    const pesoAdicional = safeNum(llanta.peso) * cantidad;
+    
+    // Calcular totales actuales
+    const totalVolumenActual = pedidosEnCurso.reduce((acc, cur) => acc + safeNum(cur.volumen), 0);
+    const totalPesoActual = pedidosEnCurso.reduce((acc, cur) => acc + safeNum(cur.peso), 0);
+    
+    // Calcular nuevos totales
+    const nuevoVolumenTotal = totalVolumenActual + volumenAdicional;
+    const nuevoPesoTotal = totalPesoActual + pesoAdicional;
+    
+    // Obtener capacidades del camión
+    const capacidadVolumen = safeNum(pedidoCamion.volumen);
+    const capacidadPeso = safeNum(pedidoCamion["capacidad de carga (kg)"]) || safeNum(pedidoCamion.carga);
+    
+    // Calcular porcentajes
+    const porcentajeVolumen = (nuevoVolumenTotal / capacidadVolumen) * 100;
+    const porcentajePeso = (nuevoPesoTotal / capacidadPeso) * 100;
+
+    // Agregar al pedido
     const pedidoExistente = pedidosEnCurso.find(p => p.clave === llanta.clave);
     if (pedidoExistente) {
         pedidoExistente.cantidad += cantidad;
@@ -1647,10 +1725,18 @@ function agregarPedido() {
         });
     }
 
+    // Mostrar alerta de resumen inmediatamente
+    mostrarAlertaCapacidad(
+        capacidadVolumen - nuevoVolumenTotal,
+        capacidadPeso - nuevoPesoTotal,
+        porcentajeVolumen,
+        porcentajePeso
+    );
+
     renderPedidosActuales();
-    actualizarGraficas(); // Aseguramos que las gráficas se actualicen
+    actualizarGraficas();
     resetPedidoInputs();
-}   
+}
 // Modificar la función reservarPedidoActual()
 // Reemplazar o agregar esta función
 async function reservarPedidoActual(idx) {
@@ -1884,7 +1970,7 @@ function actualizarGraficas() {
     let porcentajePeso = (totalPeso / pesoTotal) * 100;
 
     // Mostrar alerta si supera 70%
-    if (porcentajeVolumen > 70 || porcentajePeso > 70) {
+    if (porcentajeVolumen > 0 || porcentajePeso > 70) {
         mostrarAlertaCapacidad(
             volTotal - totalVolumen,
             pesoTotal - totalPeso,
@@ -1921,25 +2007,85 @@ function actualizarGraficas() {
 }
 // Agregar después de la función actualizarGraficas()
 // Modificar la función mostrarAlertaCapacidad() existente
+function agregarEstilosAlertas() {
+    if (!document.getElementById('estilosAlertas')) {
+        const estilos = document.createElement('style');
+        estilos.id = 'estilosAlertas';
+        estilos.innerHTML = `
+            .alerta-flotante {
+                position: fixed;
+                bottom: 20px;
+                right: 20px;
+                background: white;
+                border: 2px solid #ff4444;
+                border-radius: 8px;
+                padding: 15px;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+                z-index: 1000;
+                max-width: 300px;
+                animation: slideIn 0.5s ease-out;
+            }
+
+            @keyframes slideIn {
+                from { transform: translateX(100%); }
+                to { transform: translateX(0); }
+            }
+
+            .alerta-flotante button {
+                position: absolute;
+                top: 5px;
+                right: 5px;
+                border: none;
+                background: none;
+                cursor: pointer;
+                font-size: 18px;
+            }
+        `;
+        document.head.appendChild(estilos);
+    }
+}
+
 function mostrarAlertaCapacidad(espacioRestante, pesoRestante, pctVolumen, pctPeso) {
+    agregarEstilosAlertas();
+
     // Remover alerta anterior si existe
     const alertaAnterior = document.querySelector('.alerta-flotante');
     if (alertaAnterior) alertaAnterior.remove();
 
-    // Clasificar pedidos actuales
+    const alerta = document.createElement('div');
+    alerta.className = 'alerta-flotante';
+    
+    // Determinar nivel y color de alerta según los nuevos rangos
+    let nivelAlerta, colorAlerta;
+    const maxPct = Math.max(pctVolumen, pctPeso);
+
+    if (maxPct > 95) {
+        nivelAlerta = '⚠️ ¡ADVERTENCIA!';
+        colorAlerta = '#ff4444'; // Rojo
+    } else if (maxPct > 85) {
+        nivelAlerta = '⚠️ Precaución';
+        colorAlerta = '#ffa500'; // Amarillo
+    } else {
+        nivelAlerta = '✅ Óptimo';
+        colorAlerta = '#4CAF50'; // Verde
+    }
+
+    alerta.style.borderColor = colorAlerta;
+
+    // Clasificar pedidos actuales con patrones mejorados
     const resumenPedidos = pedidosEnCurso.reduce((acc, pedido) => {
         const desc = (pedido.descripcion || '').toUpperCase();
         const linea = (pedido.linea || '').toUpperCase();
-        let categoria = 'OTROS';
+        let categoria;
 
-        // Determinar categoría
+        // Determinar categoría usando patrones mejorados
         if (desc.match(/AGRICOLA|TRACTOR|R-1|AGR/) || linea.includes('AGRICOLA')) {
             categoria = 'AGRICOLA';
         }
-        else if (desc.match(/CAMION|TRAILER|22.5|24.5|17.5|19.5/) || linea.includes('CAMION')) {
+        else if (desc.match(/CAMION|TRAILER|22\.5|24\.5|17\.5|19\.5/) || linea.includes('CAMION')) {
             categoria = 'CAMION';
         }
-        else if (desc.match(/OTR|INDUSTRIAL|L-[2-5]|E-[2-4]|25"|33"|35"|49"/) || linea.includes('OTR')) {
+        else if (desc.match(/OTR|INDUSTRIAL|L-[2-5]|E-[2-4]|25"|33"|35"|49"|SKS|CT85/) || linea.includes('OTR')) {
             categoria = 'OTR/INDUSTRIAL';
         }
         else if (desc.match(/4X4|AT|MT|LT|SUV|PICKUP/) || linea.includes('4X4')) {
@@ -1948,19 +2094,20 @@ function mostrarAlertaCapacidad(espacioRestante, pesoRestante, pctVolumen, pctPe
         else if (desc.match(/AUTO|R13|R14|R15|R16/) || linea.includes('AUTO')) {
             categoria = 'AUTO';
         }
+        else {
+            categoria = 'OTROS';
+        }
 
         if (!acc[categoria]) acc[categoria] = 0;
         acc[categoria] += pedido.cantidad;
         return acc;
     }, {});
 
-    // Crear nueva alerta simplificada
-    const alerta = document.createElement('div');
-    alerta.className = 'alerta-flotante';
     alerta.innerHTML = `
-        <button onclick="this.parentElement.remove()">✕</button>
-        <h4 style="color:#489051;margin:0 0 10px 0">Resumen de Carga</h4>
-        
+        <button onclick="this.parentElement.remove()">×</button>
+        <h4 style="color:${colorAlerta};margin:0 0 10px 0">
+            ${nivelAlerta}
+        </h4>
         <div style="background:#f5f5f5;padding:12px;border-radius:4px;margin-bottom:10px">
             ${Object.entries(resumenPedidos)
                 .filter(([_, cantidad]) => cantidad > 0)
@@ -1970,19 +2117,71 @@ function mostrarAlertaCapacidad(espacioRestante, pesoRestante, pctVolumen, pctPe
                     </p>
                 `).join('')}
         </div>
-
-        <p style="margin:5px 0;color:#666;">
-            <b>Espacio disponible:</b> ${espacioRestante.toFixed(2)} m³
-        </p>
-        <p style="margin:5px 0;color:#666;">
-            <b>Peso disponible:</b> ${pesoRestante.toFixed(2)} kg
-        </p>
+        <div style="margin:5px 0">
+            <p style="color:${colorAlerta}">
+                <b>Volumen:</b> ${pctVolumen.toFixed(1)}%
+                ${espacioRestante < 0 ? ' (¡Excedido!)' : ''}
+            </p>
+            <p style="color:${colorAlerta}">
+                <b>Peso:</b> ${pctPeso.toFixed(1)}%
+                ${pesoRestante < 0 ? ' (¡Excedido!)' : ''}
+            </p>
+        </div>
+        <div style="margin-top:10px;padding-top:10px;border-top:1px solid #eee">
+            <p style="margin:5px 0;color:#666;">
+                <b>Espacio disponible:</b> ${espacioRestante.toFixed(2)} m³
+            </p>
+            <p style="margin:5px 0;color:#666;">
+                <b>Peso disponible:</b> ${pesoRestante.toFixed(2)} kg
+            </p>
+        </div>
     `;
 
     document.body.appendChild(alerta);
 
     // Auto-eliminar después de 10 segundos
-    setTimeout(() => alerta.remove(), 10000);
+    setTimeout(() => {
+        if (alerta.parentElement) alerta.remove();
+    }, 10000);
+}
+
+// Agregar esta función auxiliar al inicio del archivo
+function agregarEstilosAlertas() {
+    if (!document.getElementById('estilosAlertas')) {
+        const estilos = document.createElement('style');
+        estilos.id = 'estilosAlertas';
+        estilos.innerHTML = `
+            .alerta-flotante {
+                position: fixed;
+                bottom: 20px;
+                right: 20px;
+                background: white;
+                border: 2px solid #ff4444;
+                border-radius: 8px;
+                padding: 15px;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+                z-index: 1000;
+                max-width: 300px;
+                animation: slideIn 0.5s ease-out;
+            }
+
+            @keyframes slideIn {
+                from { transform: translateX(100%); }
+                to { transform: translateX(0); }
+            }
+
+            .alerta-flotante button {
+                position: absolute;
+                top: 5px;
+                right: 5px;
+                border: none;
+                background: none;
+                cursor: pointer;
+                font-size: 18px;
+            }
+        `;
+        document.head.appendChild(estilos);
+    }
 }
 function calcularSugerenciasLlantas(espacioRestante, pesoRestante) {
     let sugerencias = [];
