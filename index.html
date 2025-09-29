@@ -437,6 +437,43 @@
             <input type="text" id="inputPedidoNumEconomico" oninput="llenarDatosCamionPedido()" placeholder="Ingrese número económico" />
         </div>                
         <div id="datosCamionPedido" style="margin-top:10px; font-weight:bold; min-height: 50px;"></div>
+        <!-- Reemplazar la sección actual de verificación rápida con esto -->
+        <div style="margin-top:10px;">
+        <button class="btn btn-info" onclick="toggleVerificacionRapida()">
+            <i class="bi bi-calculator"></i> Mostrar Calculadora Rápida
+        </button>
+    
+        <div id="verificacionRapidaPanel" style="display:none;">
+            <div class="card mb-3 mt-3">
+               <div class="card-header">
+                   <h5>Verificación Rápida de Capacidad</h5>
+              </div>
+              <div class="card-body">
+                  <div class="row">
+                      <div class="col-md-3">
+                          <label>Cantidad</label>
+                          <input type="number" id="quickCheckCantidad" class="form-control" value="1" min="1">
+                     </div>
+                     <div class="col-md-3">
+                         <label>Tipo de Llanta</label>
+                         <select id="quickCheckTipo" class="form-control">
+                             <option value="AUTO">Auto</option>
+                             <option value="CAMION">Camión</option>
+                             <option value="AGRICOLA">Agrícola</option>
+                             <option value="INDUSTRIAL">Industrial/OTR</option>
+                             <option value="SUV">SUV/4x4</option>
+                         </select>
+                     </div>
+                     <div class="col-md-4 d-flex align-items-end">
+                         <button onclick="verificacionRapida()" class="btn btn-primary">
+                             Verificar Capacidad
+                         </button>
+                     </div>
+                 </div>
+             </div>
+         </div>
+     </div>
+ </div>
           
         <div style="margin-top: 20px;">
             <div class="graph-container">
@@ -1921,6 +1958,104 @@ function limpiarPedidosActuales() {
         }
     }
 }
+// Agregar después de las funciones existentes
+function toggleVerificacionRapida() {
+    const panel = document.getElementById('verificacionRapidaPanel');
+    const boton = document.querySelector('button[onclick="toggleVerificacionRapida()"]');
+    
+    if (panel.style.display === 'none') {
+        panel.style.display = 'block';
+        boton.innerHTML = '<i class="bi bi-calculator"></i> Ocultar Calculadora Rápida';
+        boton.classList.replace('btn-info', 'btn-secondary');
+    } else {
+        panel.style.display = 'none';
+        boton.innerHTML = '<i class="bi bi-calculator"></i> Mostrar Calculadora Rápida';
+        boton.classList.replace('btn-secondary', 'btn-info');
+    }
+}
+// Agregar después de las funciones existentes
+async function verificacionRapida() {
+    if (!pedidoCamion) {
+        alert('Primero selecciona un camión');
+        return;
+    }
+
+    const cantidad = parseInt(document.getElementById('quickCheckCantidad').value);
+    const tipo = document.getElementById('quickCheckTipo').value;
+
+    if (!cantidad || cantidad <= 0) {
+        alert('Ingresa una cantidad válida');
+        return;
+    }
+
+    // Valores promedio por tipo de llanta (en m³)
+    const volumenesPromedio = {
+        'AUTO': 0.049,
+        'CAMION': 0.29,
+        'AGRICOLA': 0.85,
+        'INDUSTRIAL': 1.2,
+        'SUV': 0.25
+    };
+
+    // Pesos promedio por tipo de llanta (en kg)
+    const pesosPromedio = {
+        'AUTO': 8,
+        'CAMION': 45,
+        'AGRICOLA': 85,
+        'INDUSTRIAL': 150,
+        'SUV': 15
+    };
+
+    const volumenTotal = cantidad * volumenesPromedio[tipo];
+    const pesoTotal = cantidad * pesosPromedio[tipo];
+
+    const capacidadVolumen = safeNum(pedidoCamion.volumen);
+    const capacidadPeso = safeNum(pedidoCamion["capacidad de carga (kg)"]) || safeNum(pedidoCamion.carga);
+
+    // Calcular volumen y peso actual del pedido en curso
+    const volumenActual = pedidosEnCurso.reduce((acc, cur) => acc + safeNum(cur.volumen), 0);
+    const pesoActual = pedidosEnCurso.reduce((acc, cur) => acc + safeNum(cur.peso), 0);
+
+    // Calcular disponible
+    const volumenDisponible = capacidadVolumen - volumenActual;
+    const pesoDisponible = capacidadPeso - pesoActual;
+
+    // Verificar si cabe
+    const cabePorVolumen = volumenTotal <= volumenDisponible;
+    const cabePorPeso = pesoTotal <= pesoDisponible;
+    const cabe = cabePorVolumen && cabePorPeso;
+
+    // Crear mensaje detallado
+    const mensaje = `
+        <div class="alert ${cabe ? 'alert-success' : 'alert-warning'} mt-3">
+            <h5>${cabe ? '✅ Sí caben en el camión' : '⚠️ No caben en el camión'}</h5>
+            <hr>
+            <p><b>Análisis para ${cantidad} llantas tipo ${tipo}:</b></p>
+            <ul>
+                <li>Volumen requerido: ${volumenTotal.toFixed(2)} m³ de ${volumenDisponible.toFixed(2)} m³ disponibles</li>
+                <li>Peso requerido: ${pesoTotal.toFixed(2)} kg de ${pesoDisponible.toFixed(2)} kg disponibles</li>
+            </ul>
+            ${!cabe ? `
+                <p><b>Razón:</b> ${!cabePorVolumen ? 'Excede el volumen disponible' : 'Excede el peso disponible'}</p>
+                <p><b>Sugerencia:</b> Podrías cargar aproximadamente ${Math.floor(Math.min(
+                    volumenDisponible / volumenesPromedio[tipo],
+                    pesoDisponible / pesosPromedio[tipo]
+                ))} llantas de este tipo</p>
+            ` : ''}
+        </div>
+    `;
+
+    // Mostrar resultado
+    const resultadoDiv = document.createElement('div');
+    resultadoDiv.innerHTML = mensaje;
+    
+    // Insertar después del formulario de verificación rápida
+    const formVerificacion = document.querySelector('.card.mb-3.mt-3');
+    formVerificacion.parentNode.insertBefore(resultadoDiv, formVerificacion.nextSibling);
+
+    // Remover después de 10 segundos
+    setTimeout(() => resultadoDiv.remove(), 10000);
+}
     // ----- Gráficas -----
     const ctxVolumen = document.getElementById('graphVolumen').getContext('2d');
     const ctxCarga = document.getElementById('graphCarga').getContext('2d');
@@ -2699,7 +2834,6 @@ facturaScanBtn.onclick = async () => {
         facturaProgressBar.style.display = 'none';
     }
 };
-
 // Función auxiliar para comprimir imágenes
 async function compressImage(canvas) {
     return new Promise((resolve) => {
