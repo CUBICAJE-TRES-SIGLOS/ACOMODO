@@ -1993,6 +1993,7 @@ function verificacionRapida() {
                         <label>Tipo de Llanta</label>
                         <select class="form-control tipo-llanta">
                             <option value="AUTO">Auto</option>
+                            <option value="CAMIONETA">Camioneta</option>
                             <option value="CAMION">Camión</option>
                             <option value="AGRICOLA">Agrícola</option>
                             <option value="INDUSTRIAL">Industrial/OTR</option>
@@ -2036,6 +2037,7 @@ function agregarCombinacion() {
                 <label>Tipo de Llanta</label>
                 <select class="form-control tipo-llanta">
                     <option value="AUTO">Auto</option>
+                    <option value="CAMIONETA">Camioneta</option>
                     <option value="CAMION">Camión</option>
                     <option value="AGRICOLA">Agrícola</option>
                     <option value="INDUSTRIAL">Industrial/OTR</option>
@@ -2066,6 +2068,7 @@ function calcularCombinaciones() {
     const valoresPromedio = {
         'AUTO': { volumen: 0.049, peso: 8 },
         'CAMION': { volumen: 0.29, peso: 45 },
+        'CAMIONETA': { volumen: 0.39, peso: 55 },
         'AGRICOLA': { volumen: 0.85, peso: 85 },
         'INDUSTRIAL': { volumen: 1.2, peso: 150 },
         'SUV': { volumen: 0.25, peso: 15 }
@@ -2162,6 +2165,7 @@ function limpiarCalculadoraRapida() {
                         <label>Tipo de Llanta</label>
                         <select class="form-control tipo-llanta">
                             <option value="AUTO">Auto</option>
+                            <option value="CAMIONETA">Camioneta</option>
                             <option value="CAMION">Camión</option>
                             <option value="AGRICOLA">Agrícola</option>
                             <option value="INDUSTRIAL">Industrial/OTR</option>
