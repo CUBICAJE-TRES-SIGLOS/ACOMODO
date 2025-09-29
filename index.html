@@ -2110,7 +2110,7 @@ function calcularCombinaciones() {
     // Generar reporte detallado
     const mensaje = `
         <div class="alert ${volumenTotal <= volumenDisponible && pesoTotal <= pesoDisponible ? 'alert-success' : 'alert-warning'} mt-3">
-            <h5>${volumenTotal <= volumenDisponible && pesoTotal <= pesoDisponible ? '✅ La combinación cabe en el camión' : '⚠️ La combinación excede la capacidad'}</h5>
+            <h5>${volumenTotal <= volumenDisponible && pesoTotal <= pesoDisponible ? '✅ El pedido si cabe en la unidad' : '⚠️ El pedido excede la capacidad'}</h5>
             <hr>
             <h6>Desglose por tipo:</h6>
             <ul>
