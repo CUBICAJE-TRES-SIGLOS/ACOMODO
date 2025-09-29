@@ -1974,73 +1974,164 @@ function toggleVerificacionRapida() {
     }
 }
 // Agregar después de las funciones existentes
-async function verificacionRapida() {
+function verificacionRapida() {
     if (!pedidoCamion) {
         alert('Primero selecciona un camión');
         return;
     }
 
-    const cantidad = parseInt(document.getElementById('quickCheckCantidad').value);
-    const tipo = document.getElementById('quickCheckTipo').value;
+    // Panel de entrada múltiple
+    const panelHTML = `
+        <div class="card mb-3">
+            <div class="card-body" id="combinacionesPanel">
+                <div class="row mb-2 combinacion-row">
+                    <div class="col-md-3">
+                        <label>Cantidad</label>
+                        <input type="number" class="form-control cantidad-llanta" value="1" min="1">
+                    </div>
+                    <div class="col-md-3">
+                        <label>Tipo de Llanta</label>
+                        <select class="form-control tipo-llanta">
+                            <option value="AUTO">Auto</option>
+                            <option value="CAMION">Camión</option>
+                            <option value="AGRICOLA">Agrícola</option>
+                            <option value="INDUSTRIAL">Industrial/OTR</option>
+                            <option value="SUV">SUV/4x4</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2 d-flex align-items-end">
+                        <button class="btn btn-danger btn-sm" onclick="eliminarCombinacion(this)">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div class="card-footer">
+                <button class="btn btn-success" onclick="agregarCombinacion()">
+                    <i class="bi bi-plus-circle"></i> Agregar combinación
+                </button>
+                <button class="btn btn-primary" onclick="calcularCombinaciones()">
+                    <i class="bi bi-calculator"></i> Calcular capacidad
+                </button>
+                <button class="btn btn-danger" onclick="limpiarCalculadoraRapida()">
+                    <i class="bi bi-trash"></i> Limpiar todo
+                </button>
+            </div>
+        </div>
+    `;
 
-    if (!cantidad || cantidad <= 0) {
-        alert('Ingresa una cantidad válida');
+    // Reemplazar el panel existente
+    const panelActual = document.getElementById('verificacionRapidaPanel');
+    panelActual.innerHTML = panelHTML;
+}
+
+function agregarCombinacion() {
+    const nuevaFila = `
+        <div class="row mb-2 combinacion-row">
+            <div class="col-md-3">
+                <label>Cantidad</label>
+                <input type="number" class="form-control cantidad-llanta" value="1" min="1">
+            </div>
+            <div class="col-md-3">
+                <label>Tipo de Llanta</label>
+                <select class="form-control tipo-llanta">
+                    <option value="AUTO">Auto</option>
+                    <option value="CAMION">Camión</option>
+                    <option value="AGRICOLA">Agrícola</option>
+                    <option value="INDUSTRIAL">Industrial/OTR</option>
+                    <option value="SUV">SUV/4x4</option>
+                </select>
+            </div>
+            <div class="col-md-2 d-flex align-items-end">
+                <button class="btn btn-danger btn-sm" onclick="eliminarCombinacion(this)">
+                    <i class="bi bi-trash"></i>
+                </button>
+            </div>
+        </div>
+    `;
+    document.getElementById('combinacionesPanel').insertAdjacentHTML('beforeend', nuevaFila);
+}
+
+function eliminarCombinacion(boton) {
+    boton.closest('.combinacion-row').remove();
+}
+
+function calcularCombinaciones() {
+    if (!pedidoCamion) {
+        alert('Selecciona un camión primero');
         return;
     }
 
-    // Valores promedio por tipo de llanta (en m³)
-    const volumenesPromedio = {
-        'AUTO': 0.049,
-        'CAMION': 0.29,
-        'AGRICOLA': 0.85,
-        'INDUSTRIAL': 1.2,
-        'SUV': 0.25
+    // Valores promedio por tipo
+    const valoresPromedio = {
+        'AUTO': { volumen: 0.049, peso: 8 },
+        'CAMION': { volumen: 0.29, peso: 45 },
+        'AGRICOLA': { volumen: 0.85, peso: 85 },
+        'INDUSTRIAL': { volumen: 1.2, peso: 150 },
+        'SUV': { volumen: 0.25, peso: 15 }
     };
 
-    // Pesos promedio por tipo de llanta (en kg)
-    const pesosPromedio = {
-        'AUTO': 8,
-        'CAMION': 45,
-        'AGRICOLA': 85,
-        'INDUSTRIAL': 150,
-        'SUV': 15
-    };
+    // Obtener todas las combinaciones
+    let volumenTotal = 0;
+    let pesoTotal = 0;
+    const detalles = [];
 
-    const volumenTotal = cantidad * volumenesPromedio[tipo];
-    const pesoTotal = cantidad * pesosPromedio[tipo];
+    document.querySelectorAll('.combinacion-row').forEach(row => {
+        const cantidad = parseInt(row.querySelector('.cantidad-llanta').value) || 0;
+        const tipo = row.querySelector('.tipo-llanta').value;
+        
+        if (cantidad > 0) {
+            const volumenParcial = cantidad * valoresPromedio[tipo].volumen;
+            const pesoParcial = cantidad * valoresPromedio[tipo].peso;
+            
+            volumenTotal += volumenParcial;
+            pesoTotal += pesoParcial;
+            
+            detalles.push({
+                tipo,
+                cantidad,
+                volumen: volumenParcial,
+                peso: pesoParcial
+            });
+        }
+    });
 
-    const capacidadVolumen = safeNum(pedidoCamion.volumen);
-    const capacidadPeso = safeNum(pedidoCamion["capacidad de carga (kg)"]) || safeNum(pedidoCamion.carga);
-
-    // Calcular volumen y peso actual del pedido en curso
+    // Calcular capacidades disponibles
     const volumenActual = pedidosEnCurso.reduce((acc, cur) => acc + safeNum(cur.volumen), 0);
     const pesoActual = pedidosEnCurso.reduce((acc, cur) => acc + safeNum(cur.peso), 0);
-
-    // Calcular disponible
+    const capacidadVolumen = safeNum(pedidoCamion.volumen);
+    const capacidadPeso = safeNum(pedidoCamion["capacidad de carga (kg)"]) || safeNum(pedidoCamion.carga);
     const volumenDisponible = capacidadVolumen - volumenActual;
     const pesoDisponible = capacidadPeso - pesoActual;
 
-    // Verificar si cabe
-    const cabePorVolumen = volumenTotal <= volumenDisponible;
-    const cabePorPeso = pesoTotal <= pesoDisponible;
-    const cabe = cabePorVolumen && cabePorPeso;
-
-    // Crear mensaje detallado
+    // Generar reporte detallado
     const mensaje = `
-        <div class="alert ${cabe ? 'alert-success' : 'alert-warning'} mt-3">
-            <h5>${cabe ? '✅ Sí caben en el camión' : '⚠️ No caben en el camión'}</h5>
+        <div class="alert ${volumenTotal <= volumenDisponible && pesoTotal <= pesoDisponible ? 'alert-success' : 'alert-warning'} mt-3">
+            <h5>${volumenTotal <= volumenDisponible && pesoTotal <= pesoDisponible ? '✅ La combinación cabe en el camión' : '⚠️ La combinación excede la capacidad'}</h5>
             <hr>
-            <p><b>Análisis para ${cantidad} llantas tipo ${tipo}:</b></p>
+            <h6>Desglose por tipo:</h6>
             <ul>
-                <li>Volumen requerido: ${volumenTotal.toFixed(2)} m³ de ${volumenDisponible.toFixed(2)} m³ disponibles</li>
-                <li>Peso requerido: ${pesoTotal.toFixed(2)} kg de ${pesoDisponible.toFixed(2)} kg disponibles</li>
+                ${detalles.map(d => `
+                    <li>${d.cantidad} llantas tipo ${d.tipo}:
+                        <ul>
+                            <li>Volumen: ${d.volumen.toFixed(2)} m³</li>
+                            <li>Peso: ${d.peso.toFixed(2)} kg</li>
+                        </ul>
+                    </li>
+                `).join('')}
             </ul>
-            ${!cabe ? `
-                <p><b>Razón:</b> ${!cabePorVolumen ? 'Excede el volumen disponible' : 'Excede el peso disponible'}</p>
-                <p><b>Sugerencia:</b> Podrías cargar aproximadamente ${Math.floor(Math.min(
-                    volumenDisponible / volumenesPromedio[tipo],
-                    pesoDisponible / pesosPromedio[tipo]
-                ))} llantas de este tipo</p>
+            <hr>
+            <p><b>Totales requeridos:</b></p>
+            <ul>
+                <li>Volumen total: ${volumenTotal.toFixed(2)} m³ de ${volumenDisponible.toFixed(2)} m³ disponibles</li>
+                <li>Peso total: ${pesoTotal.toFixed(2)} kg de ${pesoDisponible.toFixed(2)} kg disponibles</li>
+            </ul>
+            ${volumenTotal > volumenDisponible || pesoTotal > pesoDisponible ? `
+                <div class="alert alert-danger">
+                    <p><b>Exceso:</b></p>
+                    ${volumenTotal > volumenDisponible ? `<li>Volumen excedido por ${(volumenTotal - volumenDisponible).toFixed(2)} m³</li>` : ''}
+                    ${pesoTotal > pesoDisponible ? `<li>Peso excedido por ${(pesoTotal - pesoDisponible).toFixed(2)} kg</li>` : ''}
+                </div>
             ` : ''}
         </div>
     `;
@@ -2049,12 +2140,64 @@ async function verificacionRapida() {
     const resultadoDiv = document.createElement('div');
     resultadoDiv.innerHTML = mensaje;
     
-    // Insertar después del formulario de verificación rápida
-    const formVerificacion = document.querySelector('.card.mb-3.mt-3');
-    formVerificacion.parentNode.insertBefore(resultadoDiv, formVerificacion.nextSibling);
+    const panelVerificacion = document.getElementById('verificacionRapidaPanel');
+    const resultadoExistente = panelVerificacion.querySelector('.alert');
+    if (resultadoExistente) {
+        resultadoExistente.remove();
+    }
+    panelVerificacion.appendChild(resultadoDiv);
+}
+// Agregar después de la función calcularCombinaciones()
 
-    // Remover después de 10 segundos
-    setTimeout(() => resultadoDiv.remove(), 10000);
+function limpiarCalculadoraRapida() {
+    const panelHTML = `
+        <div class="card mb-3">
+            <div class="card-body" id="combinacionesPanel">
+                <div class="row mb-2 combinacion-row">
+                    <div class="col-md-3">
+                        <label>Cantidad</label>
+                        <input type="number" class="form-control cantidad-llanta" value="1" min="1">
+                    </div>
+                    <div class="col-md-3">
+                        <label>Tipo de Llanta</label>
+                        <select class="form-control tipo-llanta">
+                            <option value="AUTO">Auto</option>
+                            <option value="CAMION">Camión</option>
+                            <option value="AGRICOLA">Agrícola</option>
+                            <option value="INDUSTRIAL">Industrial/OTR</option>
+                            <option value="SUV">SUV/4x4</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2 d-flex align-items-end">
+                        <button class="btn btn-danger btn-sm" onclick="eliminarCombinacion(this)">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div class="card-footer">
+                <button class="btn btn-success" onclick="agregarCombinacion()">
+                    <i class="bi bi-plus-circle"></i> Agregar combinación
+                </button>
+                <button class="btn btn-primary" onclick="calcularCombinaciones()">
+                    <i class="bi bi-calculator"></i> Calcular capacidad
+                </button>
+                <button class="btn btn-danger" onclick="limpiarCalculadoraRapida()">
+                    <i class="bi bi-trash"></i> Limpiar todo
+                </button>
+            </div>
+        </div>
+    `;
+
+    // Reemplazar el panel existente
+    const panelActual = document.getElementById('verificacionRapidaPanel');
+    panelActual.innerHTML = panelHTML;
+
+    // Remover cualquier resultado previo
+    const resultadoExistente = panelActual.querySelector('.alert');
+    if (resultadoExistente) {
+        resultadoExistente.remove();
+    }
 }
     // ----- Gráficas -----
     const ctxVolumen = document.getElementById('graphVolumen').getContext('2d');
