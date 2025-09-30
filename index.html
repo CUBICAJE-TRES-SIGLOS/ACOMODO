@@ -8,7 +8,6 @@
     <style>
     /* --- Tus estilos existentes --- */
 
-
     body {
         background-image: url('https://www.romacarabs.com/wp-content/uploads/2024/05/Llantas-de-un-coche.jpg');
         background-size: cover;
@@ -2127,35 +2126,64 @@ function calcularCombinaciones() {
     // En la función calcularCombinaciones()
 
     const mensaje = `
-       <div class="alert ${volumenTotal <= volumenDisponible && pesoTotal <= pesoDisponible ? 'alert-success' : 'alert-warning'} mt-3">
-           <h5>${volumenTotal <= volumenDisponible && pesoTotal <= pesoDisponible ? '✅ El pedido si cabe en la unidad' : '⚠️ El pedido excede la capacidad'}</h5>
+        <div class="alert ${volumenTotal <= volumenDisponible && pesoTotal <= pesoDisponible ? 'alert-success' : 'alert-warning'} mt-3">
+            <h5>${volumenTotal <= volumenDisponible && pesoTotal <= pesoDisponible ? '✅ El pedido si cabe en la unidad' : '⚠️ El pedido excede la capacidad'}</h5>
+            <hr>
+            <h6>Desglose por tipo:</h6>
+            <ul>
+               ${detalles.map(d => `
+                   <li>${d.cantidad} llantas tipo ${d.tipo}:
+                       <ul>
+                           <li>Volumen: ${d.volumen.toFixed(2)} m³</li>
+                           <li>Peso: ${d.peso.toFixed(2)} kg</li>
+                       </ul>
+                   </li>
+               `).join('')}
+           </ul>
            <hr>
-           <h6>Desglose por tipo:</h6>
-           <ul>
-              ${detalles.map(d => `
-                  <li>${d.cantidad} llantas tipo ${d.tipo}:
-                     <ul>
-                         <li>Volumen: ${d.volumen.toFixed(2)} m³</li>
-                         <li>Peso: ${d.peso.toFixed(2)} kg</li>
-                     </ul>
-                 </li>
-             `).join('')}
-         </ul>
-         <hr>
-         <p><b>Totales requeridos:</b></p>
-         <ul>
-             <li>Volumen total: ${volumenTotal.toFixed(2)} m³ de ${volumenDisponible.toFixed(2)} m³ disponibles</li>
-             <li>Peso total: ${pesoTotal.toFixed(2)} kg de ${pesoDisponible.toFixed(2)} kg disponibles</li>
-         </ul>
-         ${volumenTotal > volumenDisponible || pesoTotal > pesoDisponible ? `
-             <div class="alert alert-danger">
-                 <p><b>Exceso:</b></p>
-                 ${volumenTotal > volumenDisponible ? `<li>Volumen excedido por ${(volumenTotal - volumenDisponible).toFixed(2)} m³</li>` : ''}
-                 ${pesoTotal > pesoDisponible ? `<li>Peso excedido por ${(pesoTotal - pesoDisponible).toFixed(2)} kg</li>` : ''}
-             </div>
-         ` : ''}
-     </div>
- `;
+           <p><b>Totales requeridos:</b></p>
+        
+           <!-- Barra de progreso para Volumen -->
+           <div class="mb-3">
+               <label>Ocupación de volumen:</label>
+               <div class="progress">
+                   <div class="progress-bar ${volumenTotal > volumenDisponible ? 'bg-danger' : volumenTotal > volumenDisponible * 0.9 ? 'bg-warning' : 'bg-success'}" 
+                        role="progressbar" 
+                        style="width: ${Math.min((volumenTotal/volumenDisponible) * 100, 100)}%;" 
+                        aria-valuenow="${Math.min((volumenTotal/volumenDisponible) * 100, 100)}" 
+                        aria-valuemin="0" 
+                        aria-valuemax="100">
+                       ${((volumenTotal/volumenDisponible) * 100).toFixed(1)}%
+                   </div>
+               </div>
+               <small>Volumen total: ${volumenTotal.toFixed(2)} m³ de ${volumenDisponible.toFixed(2)} m³ disponibles</small>
+           </div>
+
+           <!-- Barra de progreso para Peso -->
+           <div class="mb-3">
+               <label>Ocupación de peso:</label>
+               <div class="progress">
+                   <div class="progress-bar ${pesoTotal > pesoDisponible ? 'bg-danger' : pesoTotal > pesoDisponible * 0.9 ? 'bg-warning' : 'bg-success'}" 
+                        role="progressbar" 
+                        style="width: ${Math.min((pesoTotal/pesoDisponible) * 100, 100)}%;" 
+                        aria-valuenow="${Math.min((pesoTotal/pesoDisponible) * 100, 100)}" 
+                        aria-valuemin="0" 
+                        aria-valuemax="100">
+                       ${((pesoTotal/pesoDisponible) * 100).toFixed(1)}%
+                  </div>
+              </div>
+              <small>Peso total: ${pesoTotal.toFixed(2)} kg de ${pesoDisponible.toFixed(2)} kg disponibles</small>
+          </div>
+
+          ${volumenTotal > volumenDisponible || pesoTotal > pesoDisponible ? `
+              <div class="alert alert-danger">
+                  <p><b>Exceso:</b></p>
+                  ${volumenTotal > volumenDisponible ? `<li>Volumen excedido por ${(volumenTotal - volumenDisponible).toFixed(2)} m³</li>` : ''}
+                  ${pesoTotal > pesoDisponible ? `<li>Peso excedido por ${(pesoTotal - pesoDisponible).toFixed(2)} kg</li>` : ''}
+              </div>
+          ` : ''}
+      </div>
+  `;
 
     const resultadoDiv = document.createElement('div');
     resultadoDiv.innerHTML = mensaje;
