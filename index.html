@@ -1994,7 +1994,6 @@ function verificacionRapida() {
                         <label>Tipo de Llanta</label>
                        <select class="form-control tipo-llanta">
                            <option value="AUTO">Auto particular</option>
-                           <option value="AUTO_MEDIANO">Auto mediano</option>
                            <option value="SUV_CAMIONETA">SUVs y camionetas</option>
                            <option value="COMERCIAL_LIGERO">Vehículo comercial ligero y camiones pequeños</option>
                            <option value="PESADO">Camiones pesados y tractocamiones</option>
@@ -2037,7 +2036,6 @@ function agregarCombinacion() {
                 <label>Tipo de Llanta</label>
                 <select class="form-control tipo-llanta">
                     <option value="AUTO">Auto particular</option>
-                    <option value="AUTO_MEDIANO">Auto mediano</option>
                     <option value="SUV_CAMIONETA">SUVs y camionetas</option>
                     <option value="COMERCIAL_LIGERO">Vehículo comercial ligero y camiones pequeños</option>
                     <option value="PESADO">Camiones pesados y tractocamiones</option>
@@ -2066,12 +2064,9 @@ function calcularCombinaciones() {
     // Valores promedio por tipo
     const valoresPromedio = {
         'AUTO': { 
-            volumen: 0.030,
+            volumen: 0.048,
             peso: 8
-        },
-        'AUTO_MEDIANO': {
-            volumen: 0.050,  // Un valor intermedio entre AUTO y SUV
-            peso: 12        // Un valor intermedio entre AUTO y SUV
+           // Un valor intermedio entre AUTO y SUV
         },
         'SUV_CAMIONETA': { 
             volumen: 0.080,
@@ -2082,8 +2077,8 @@ function calcularCombinaciones() {
             peso: 45
         },
         'PESADO': { 
-            volumen: 0.250,
-            peso: 85
+            volumen: 0.300,
+            peso: 60
         },
         'AGRICOLA_MINERO': { 
             volumen: 1.2,
@@ -2129,36 +2124,38 @@ function calcularCombinaciones() {
     const pesoMaximo = pesoDisponible * margenSeguridad;
 
     // Generar reporte detallado
+    // En la función calcularCombinaciones()
+
     const mensaje = `
-        <div class="alert ${volumenTotal <= volumenMaximo && pesoTotal <= pesoMaximo ? 'alert-success' : 'alert-warning'} mt-3">
-            <h5>${volumenTotal <= volumenMaximo && pesoTotal <= pesoMaximo ? '✅ El pedido si cabe en la unidad' : '⚠️ El pedido excede la capacidad'}</h5>
-            <hr>
-            <h6>Desglose por tipo:</h6>
-            <ul>
-                ${detalles.map(d => `
-                    <li>${d.cantidad} llantas tipo ${d.tipo}:
-                        <ul>
-                            <li>Volumen: ${d.volumen.toFixed(2)} m³</li>
-                            <li>Peso: ${d.peso.toFixed(2)} kg</li>
-                        </ul>
-                    </li>
-                `).join('')}
-            </ul>
-            <hr>
-            <p><b>Totales requeridos:</b></p>
-            <ul>
-                <li>Volumen total: ${volumenTotal.toFixed(2)} m³ de ${volumenDisponible.toFixed(2)} m³ disponibles</li>
-                <li>Peso total: ${pesoTotal.toFixed(2)} kg de ${pesoDisponible.toFixed(2)} kg disponibles</li>
-            </ul>
-            ${volumenTotal > volumenMaximo || pesoTotal > pesoMaximo ? `
-                <div class="alert alert-danger">
-                    <p><b>Exceso:</b></p>
-                    ${volumenTotal > volumenMaximo ? `<li>Volumen excedido por ${(volumenTotal - volumenMaximo).toFixed(2)} m³</li>` : ''}
-                    ${pesoTotal > pesoMaximo ? `<li>Peso excedido por ${(pesoTotal - pesoMaximo).toFixed(2)} kg</li>` : ''}
-                </div>
-            ` : ''}
-        </div>
-    `;
+       <div class="alert ${volumenTotal <= volumenDisponible && pesoTotal <= pesoDisponible ? 'alert-success' : 'alert-warning'} mt-3">
+           <h5>${volumenTotal <= volumenDisponible && pesoTotal <= pesoDisponible ? '✅ El pedido si cabe en la unidad' : '⚠️ El pedido excede la capacidad'}</h5>
+           <hr>
+           <h6>Desglose por tipo:</h6>
+           <ul>
+              ${detalles.map(d => `
+                  <li>${d.cantidad} llantas tipo ${d.tipo}:
+                     <ul>
+                         <li>Volumen: ${d.volumen.toFixed(2)} m³</li>
+                         <li>Peso: ${d.peso.toFixed(2)} kg</li>
+                     </ul>
+                 </li>
+             `).join('')}
+         </ul>
+         <hr>
+         <p><b>Totales requeridos:</b></p>
+         <ul>
+             <li>Volumen total: ${volumenTotal.toFixed(2)} m³ de ${volumenDisponible.toFixed(2)} m³ disponibles</li>
+             <li>Peso total: ${pesoTotal.toFixed(2)} kg de ${pesoDisponible.toFixed(2)} kg disponibles</li>
+         </ul>
+         ${volumenTotal > volumenDisponible || pesoTotal > pesoDisponible ? `
+             <div class="alert alert-danger">
+                 <p><b>Exceso:</b></p>
+                 ${volumenTotal > volumenDisponible ? `<li>Volumen excedido por ${(volumenTotal - volumenDisponible).toFixed(2)} m³</li>` : ''}
+                 ${pesoTotal > pesoDisponible ? `<li>Peso excedido por ${(pesoTotal - pesoDisponible).toFixed(2)} kg</li>` : ''}
+             </div>
+         ` : ''}
+     </div>
+ `;
 
     const resultadoDiv = document.createElement('div');
     resultadoDiv.innerHTML = mensaje;
@@ -2186,7 +2183,6 @@ function limpiarCalculadoraRapida() {
                         <label>Tipo de Llanta</label>
                         <select class="form-control tipo-llanta">
                             <option value="AUTO">Auto particular</option>
-                            <option value="AUTO_MEDIANO">Auto mediano</option>
                             <option value="SUV_CAMIONETA">SUVs y camionetas</option>
                             <option value="COMERCIAL_LIGERO">Vehículo comercial ligero y camiones pequeños</option>
                             <option value="PESADO">Camiones pesados y tractocamiones</option>
