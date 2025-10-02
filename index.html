@@ -653,27 +653,42 @@
                     </div>
 
                     <!-- Pestaña 2: Nuevo sistema -->
+                    <!-- Pestaña 2: Facturas Especiales -->
                     <div class="tab-pane fade" id="facturasEspeciales">
                         <div class="card shadow-lg border-0 rounded-4">
                             <div class="card-body p-4">
-                                <h3>Escaneo de Facturas Especiales</h3>
+                                <h3>Escanea tus Facturas para ser más ágil en el proceso</h3>
                                 <div class="mb-3">
                                     <input type="file" id="fileInput" accept="application/pdf" 
                                            class="form-control" multiple>
                                 </div>
-                                <button onclick="processFiles()" class="btn btn-primary w-100">
+                                <button onclick="processFiles()" class="btn btn-primary w-100 mb-3">
                                     Escanear PDFs
                                 </button>
-                                <div id="log" class="alert alert-info mt-3" style="display:none;"></div>
-                                <div id="extractedData"></div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
+                                <button onclick="guardarEscaneoEspecial()" class="btn btn-success w-100 mb-3">
+                                    <i class="bi bi-save"></i> Guardar Escaneo
+                               </button>
+                               <div class="input-group mb-3">
+                                   <span class="input-group-text">
+                                       <i class="bi bi-search"></i>
+                                   </span>
+                                   <input type="text" 
+                                          class="form-control" 
+                                          placeholder="Buscar escaneos guardados..." 
+                                          oninput="cargarEscaneosGuardados(this.value)">
+                               </div>
+                               <button id="facturasEspecialesCacheClearBtn" class="btn btn-warning w-100 mb-3">
+                                   <i class="bi bi-trash"></i> Limpiar Caché
+                               </button>
+                                <button onclick="limpiarModales()" class="btn btn-warning" style="position: fixed; bottom: 20px; right: 20px; z-index: 9999; display: none;" id="btnLimpiarModales">
+                                   Limpiar interfaz
+                               </button>
+                               <div id="log" class="alert alert-info mt-3" style="display:none;"></div>
+                               <div id="extractedData"></div>
+                               <div id="escaneosGuardados" class="mt-4"></div>
+                          </div>
+                     </div>
+                </div> 
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
@@ -889,106 +904,129 @@ document.getElementById('inputFolioFacturaPedido').addEventListener('input', fun
     }
 });
 // Pega aquí:
-// Reemplazar la función existente agregarBloquePorFolioPedido()
 async function agregarBloquePorFolioPedido() {
-    const folio = document.getElementById('inputFolioFacturaPedido').value.trim();
+    const folio = document.getElementById('inputFolioFacturaPedido').value.trim().toLowerCase();
     if (!folio) {
         alert('Escribe un folio válido.');
         return;
     }
 
     try {
-        // Primero buscar en la hoja "reservados"
-        const resReservados = await fetch('https://sheetdb.io/api/v1/etjpwxc7mdaic?sheet=reservados');
-        const reservados = await resReservados.json();
-        const reservadosDelFolio = reservados.filter(r => r.nombre === folio);
+        console.log("Iniciando búsqueda para folio:", folio);
+        const divResultado = document.getElementById('bloqueBuscadoPedido');
 
-        if (reservadosDelFolio.length > 0) {
-            // Agregar desde reservados
-            let agregadas = 0;
-            
-            reservadosDelFolio.forEach(prod => {
-                const llanta = inventario.find(item => item.clave?.toString() === prod.Código?.toString());
-                if (llanta) {
-                    let pedidoExistente = pedidosEnCurso.find(p => p.clave === llanta.clave);
-                    const cantidad = Number(prod.Cantidad) || 1;
-                    
-                    if (pedidoExistente) {
-                        pedidoExistente.cantidad += cantidad;
-                        pedidoExistente.peso = safeNum(getField(llanta,'peso')) * pedidoExistente.cantidad;
-                        pedidoExistente.volumen = safeNum(getField(llanta,'volumen')) * pedidoExistente.cantidad;
-                        pedidoExistente.valor = safeNum(getField(llanta,'valor')) * pedidoExistente.cantidad;
-                    } else {
-                        pedidosEnCurso.push({
-                            clave: llanta.clave,
-                            descripcion: llanta.descripcion,
-                            linea: llanta.linea || '',
-                            cantidad: cantidad,
-                            peso: safeNum(getField(llanta,'peso')) * cantidad,
-                            volumen: safeNum(getField(llanta,'volumen')) * cantidad,
-                            valor: safeNum(getField(llanta,'valor')) * cantidad
-                        });
-                    }
-                    agregadas++;
-                }
-            });
-            
-            if (agregadas > 0) {
-                renderPedidosActuales();
-                actualizarGraficas();
-                alert(`Se agregaron ${agregadas} llantas desde reservados "${folio}" al pedido.`);
-                return;
-            }
-        }
+        // 1. Buscar primero en facturasParaGuardar (facturas recién escaneadas)
+        console.log("Buscando en facturas recién escaneadas...", facturasParaGuardar);
+        const facturaReciente = facturasParaGuardar.find(f => 
+            f.Nombre?.toLowerCase() === folio ||
+            f.Folio?.toLowerCase() === folio
+        );
 
-        // Si no se encuentra en reservados, buscar en bloques
-        const bloque = bloquesFacturas.find(b => b.nombre === folio || b.datos[0]?.Folio === folio);
-        
-        if (!bloque) {
-            alert('No se encontró un bloque o reserva con ese folio.');
+        if (facturaReciente) {
+            console.log("Encontrado en facturas recién escaneadas:", facturaReciente);
+            await procesarBloqueFacturas([facturaReciente]);
+            divResultado.innerHTML = `
+                <div class="alert alert-success mt-2">
+                    Se agregaron los productos de la factura al pedido.
+                </div>`;
             return;
         }
 
-        // Agregar desde bloque
-        let agregadasBloque = 0;
-        bloque.datos.forEach(prod => {
-            const llanta = inventario.find(item => item.clave?.toString() === prod.Código?.toString());
-            if (llanta) {
-                let pedidoExistente = pedidosEnCurso.find(p => p.clave === llanta.clave);
-                const cantidad = Number(prod.Cantidad) || 1;
-                
-                if (pedidoExistente) {
-                    pedidoExistente.cantidad += cantidad;
-                    pedidoExistente.peso = safeNum(getField(llanta,'peso')) * pedidoExistente.cantidad;
-                    pedidoExistente.volumen = safeNum(getField(llanta,'volumen')) * pedidoExistente.cantidad;
-                    pedidoExistente.valor = safeNum(getField(llanta,'valor')) * pedidoExistente.cantidad;
-                } else {
-                    pedidosEnCurso.push({
-                        clave: llanta.clave,
-                        descripcion: llanta.descripcion,
-                        linea: llanta.linea || '',
-                        cantidad: cantidad,
-                        peso: safeNum(getField(llanta,'peso')) * cantidad,
-                        volumen: safeNum(getField(llanta,'volumen')) * cantidad,
-                        valor: safeNum(getField(llanta,'valor')) * cantidad
-                    });
-                }
-                agregadasBloque++;
-            }
-        });
+        // 2. Buscar en escaneados especiales
+        console.log("Buscando en escaneados especiales...");
+        const resEscaneados = await fetch('https://sheetdb.io/api/v1/etjpwxc7mdaic?sheet=Escaneados especiales');
+        const escaneados = await resEscaneados.json();
+        
+        const escaneadosDelFolio = escaneados.filter(r => 
+            r.Nombre?.toLowerCase() === folio ||
+            r.nombre?.toLowerCase() === folio
+        );
 
-        if (agregadasBloque > 0) {
-            renderPedidosActuales();
-            actualizarGraficas();
-            alert(`Se agregaron ${agregadasBloque} llantas desde el bloque "${folio}" al pedido.`);
+        if (escaneadosDelFolio.length > 0) {
+            console.log("Encontrado en escaneados especiales:", escaneadosDelFolio);
+            await procesarBloqueFacturas(escaneadosDelFolio);
+            divResultado.innerHTML = `
+                <div class="alert alert-success mt-2">
+                    Se agregaron los productos de escaneados especiales al pedido.
+                </div>`;
+            return;
+        }
+
+        // 3. Buscar en bloquesFacturas
+        console.log("Buscando en bloques de facturas...");
+        const bloqueFactura = bloquesFacturas.find(b => 
+            b.nombre.toLowerCase() === folio
+        );
+
+        if (bloqueFactura) {
+            console.log("Encontrado en bloques de facturas");
+            await procesarBloqueFacturas(bloqueFactura.datos);
+            divResultado.innerHTML = `
+                <div class="alert alert-success mt-2">
+                    Se agregaron los productos del bloque al pedido.
+                </div>`;
+            return;
+        }
+
+        // 4. Buscar en reservados como última opción
+        console.log("Buscando en reservados...");
+        const resReservados = await fetch('https://sheetdb.io/api/v1/etjpwxc7mdaic?sheet=reservados');
+        const reservados = await resReservados.json();
+        const reservadosDelFolio = reservados.filter(r => 
+            r.nombre?.toLowerCase() === folio
+        );
+        
+        if (reservadosDelFolio.length > 0) {
+            console.log("Encontrado en reservados");
+            await procesarBloqueReservados(reservadosDelFolio);
+            divResultado.innerHTML = `
+                <div class="alert alert-success mt-2">
+                    Se agregaron los productos reservados al pedido.
+                </div>`;
         } else {
-            alert('No se pudieron agregar llantas del bloque (códigos no encontrados en inventario).');
+            console.log("No se encontró en ninguna fuente");
+            divResultado.innerHTML = `
+                <div class="alert alert-danger mt-2">
+                    No se encontró ningún bloque o factura con ese folio o nombre.
+                </div>`;
         }
 
     } catch (error) {
-        console.error('Error:', error);
-        alert('Error al agregar el bloque o reserva: ' + error.message);
+        console.error('Error detallado:', error);
+        document.getElementById('bloqueBuscadoPedido').innerHTML = `
+            <div class="alert alert-danger mt-2">
+                Error al procesar el bloque: ${error.message}
+            </div>`;
     }
+}
+// Funciones auxiliares para procesar cada tipo de bloque
+async function procesarBloqueFacturas(datos) {
+    for (const producto of datos) {
+        const llanta = inventario.find(item => item.clave?.toString() === producto.Código?.toString());
+        if (llanta) {
+            const cantidad = Number(producto.Cantidad) || 1;
+            
+            let pedidoExistente = pedidosEnCurso.find(p => p.clave === llanta.clave);
+            if (pedidoExistente) {
+                pedidoExistente.cantidad += cantidad;
+                pedidoExistente.peso = safeNum(getField(llanta,'peso')) * pedidoExistente.cantidad;
+                pedidoExistente.volumen = safeNum(getField(llanta,'volumen')) * pedidoExistente.cantidad;
+                pedidoExistente.valor = safeNum(getField(llanta,'valor')) * pedidoExistente.cantidad;
+            } else {
+                pedidosEnCurso.push({
+                    clave: llanta.clave,
+                    descripcion: llanta.descripcion,
+                    linea: llanta.linea || '',
+                    cantidad: cantidad,
+                    peso: safeNum(getField(llanta,'peso')) * cantidad,
+                    volumen: safeNum(getField(llanta,'volumen')) * cantidad,
+                    valor: safeNum(getField(llanta,'valor')) * cantidad
+                });
+            }
+        }
+    }
+    renderPedidosActuales();
+    actualizarGraficas();
 }
 
     // Abrir y cerrar modales
@@ -998,6 +1036,24 @@ async function agregarBloquePorFolioPedido() {
     function closeModal(id) {
         document.getElementById(id).style.display = 'none';
     }
+    function limpiarModales() {
+    // Remover todos los backdrops
+    document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
+    
+    // Remover clases y estilos del body
+    document.body.classList.remove('modal-open');
+    document.body.style.removeProperty('overflow');
+    document.body.style.removeProperty('padding-right');
+    
+    // Cerrar modales abiertos
+    document.querySelectorAll('.modal.show').forEach(modal => {
+        const bootstrapModal = bootstrap.Modal.getInstance(modal);
+        if (bootstrapModal) {
+            bootstrapModal.hide();
+        }
+        modal.remove();
+    });
+}
     // Cerrar modal si el usuario hace click fuera del contenido
     window.onclick = function(event) {
         const modales = ['modalInventario','modalFlota'];
@@ -2241,10 +2297,11 @@ function calcularCombinaciones() {
     }
     panelVerificacion.appendChild(resultadoDiv);
 }
-// Variables para el nuevo sistema de facturas
+// Variables globales para Facturas Especiales
 let extractedData = [];
 
 // Función para procesar PDFs especiales
+// Modificar la función processFiles() para incluir el cálculo de volumen
 async function processFiles() {
     const files = document.getElementById('fileInput').files;
     if (!files.length) return alert("Selecciona al menos un PDF");
@@ -2254,49 +2311,235 @@ async function processFiles() {
     logDiv.innerHTML = "";
     logDiv.style.display = "block";
 
+    const usarCache = confirm('¿Deseas usar datos en caché si están disponibles? (Selecciona "No" para forzar un nuevo escaneo)');
+
     try {
         for (const file of files) {
-            const arrayBuffer = await file.arrayBuffer();
-            const pdf = await pdfjsLib.getDocument({data: arrayBuffer}).promise;
-            let fileRows = [];
-
-            for (let i = 1; i <= pdf.numPages; i++) {
-                const page = await pdf.getPage(i);
-                const textContent = await page.getTextContent();
-                const pageText = textContent.items.map(item => item.str).join(" ");
-
-                // Extraer fecha (yyyy-mm-dd)
-                let fechaMatch = pageText.match(/\d{4}-\d{2}-\d{2}/);
-                let fecha = fechaMatch ? fechaMatch[0] : "";
-
-                // Regex específico para facturas especiales
-                const regex = /(\d+)\s+(?:pz|PZ|un|UN|UN\.|u[nN]\.?)\s+([A-Z0-9\-]+)\s+([A-Z0-9\s\.\-\/]+?)(?=\s+\$|\s+\d{1,3}(?:,\d{3})*\.\d{2}|\s+%|$)/g;
-
-                let match;
-                while ((match = regex.exec(pageText)) !== null) {
-                    fileRows.push({
-                        Archivo: file.name,
-                        Fecha: fecha,
-                        Cantidad: match[1],
-                        Codigo: match[2],
-                        Descripcion: match[3].trim()
-                    });
+            const cacheKey = `factura_especial_${file.name}_${file.lastModified}_${file.size}`;
+            
+            if (usarCache) {
+                const cachedData = localStorage.getItem(cacheKey);
+                if (cachedData) {
+                    const data = JSON.parse(cachedData);
+                    if (Date.now() - data.timestamp < 24 * 60 * 60 * 1000) {
+                        extractedData.push(...data.content);
+                        logDiv.innerHTML += `
+                            <p>Archivo: ${file.name} - usando datos en caché<br>
+                            -> ${data.content.length} productos extraídos</p>
+                        `;
+                        continue;
+                    }
                 }
             }
 
+            // Aquí implementamos la nueva función de extracción
+            const { fecha, productos } = await extractDataFromPDF(file);
+            
+            // Procesamos los productos extraídos
+            const fileRows = productos.map(producto => ({
+                Archivo: file.name,
+                Fecha: fecha,
+                Cantidad: producto.cantidad,
+                Codigo: producto.codigo,
+                Descripcion: producto.descripcion
+            }));
+
+            // Guardar en caché
+            localStorage.setItem(cacheKey, JSON.stringify({
+                timestamp: Date.now(),
+                content: fileRows
+            }));
+
             extractedData.push(...fileRows);
             logDiv.innerHTML += `
-                <p>Archivo: ${file.name} - páginas: ${pdf.numPages}<br>
+                <p>Archivo: ${file.name}<br>
                 -> ${fileRows.length} productos extraídos</p>
             `;
         }
 
         renderTable();
+        
+        // Si hay productos nuevos, ofrecer agregarlos al inventario
+        if (extractedData.length > 0) {
+            if (confirm(`Se encontraron ${extractedData.length} productos. ¿Desea agregarlos al inventario?`)) {
+                await agregarProductosNuevosAlInventario(extractedData);
+            }
+        }
+
     } catch (error) {
+        console.error('Error detallado:', error);
         logDiv.innerHTML += `<p class="text-danger">Error: ${error.message}</p>`;
     }
 }
 
+// Función de extracción mejorada
+async function extractDataFromPDF(file) {
+    const arrayBuffer = await file.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+
+    let fullText = "";
+    for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+        const page = await pdf.getPage(pageNum);
+        const textContent = await page.getTextContent();
+        fullText += textContent.items.map(item => item.str).join(" ") + "\n";
+    }
+
+    // Extraer fecha
+    const fechaRegex = /FECHA DE EXPEDICIÓN\s*([\d]{4}-[\d]{2}-[\d]{2})/i;
+    let fechaMatch = fullText.match(fechaRegex);
+    let fecha = fechaMatch ? fechaMatch[1] : new Date().toISOString().split('T')[0];
+
+    // Extraer productos
+    const productoRegex = /(\d+)\s*(pz|PZ|un|UN|UN\.|u[nN]\.?)\s+([A-Z0-9\-]+)\s+([A-Z0-9\s.\-\/]+)/g;
+    const productos = [];
+    let match;
+    while ((match = productoRegex.exec(fullText)) !== null) {
+        const cantidad = parseInt(match[1]);
+        const codigo = match[3].trim();
+        const descripcion = match[4].trim().replace(/\s+/g, " ");
+        productos.push({ cantidad, codigo, descripcion });
+    }
+
+    return { fecha, productos };
+}
+
+// Función para calcular el volumen de una llanta basado en su descripción
+async function calcularVolumenLlanta(descripcion) {
+    const desc = descripcion.toUpperCase();
+    let volumen = 0;
+
+    // Patrones para diferentes tipos de llantas
+    const patrones = [
+        {
+            regex: /^(\d{2})L-(\d{2})\s*(?:\((\d{1,2})\))?\s*((?:SKS|F3|IND|AGRO|CT).*)?/i,
+            calc: (m) => {
+                const ancho = Number(m[1]) * 25.4 * 1.15 / 1000;
+                const rin = Number(m[2]) * 0.0254;
+                const capas = m[3] ? Number(m[3]) : 12;
+                return Math.PI * Math.pow((rin + ancho)/2, 2) * ancho * 1.9;
+            }
+        },
+        {
+            regex: /^[P]?(\d{3})[\/\s\-](\d{2})[\/\s\-]?R?(\d{2})/,
+            calc: (m) => {
+                const ancho = Number(m[1]) / 1000;
+                const perfil = Number(m[2]) / 100;
+                const rin = Number(m[3]) * 0.0254;
+                return Math.PI * Math.pow((rin + ancho * perfil)/2, 2) * ancho * 1.3;
+            }
+        }
+        // Agregar más patrones según sea necesario
+    ];
+
+    // Buscar patrón coincidente y calcular volumen
+    for (const patron of patrones) {
+        const match = desc.match(patron.regex);
+        if (match) {
+            volumen = patron.calc(match);
+            break;
+        }
+    }
+
+    return volumen.toFixed(4);
+}
+
+// Función para agregar productos nuevos al inventario
+async function agregarProductosNuevosAlInventario(productos) {
+    try {
+        const datosParaGuardar = productos.map(p => ({
+            clave: p.Codigo,
+            descripcion: p.Descripcion,
+            linea: determinarTipoLlanta(p.Descripcion),
+            peso: '',  // Se deja vacío para llenado manual posterior
+            volumen: p.Volumen,
+            valor: ''  // Se deja vacío para llenado manual posterior
+        }));
+
+        const response = await fetch('https://sheetdb.io/api/v1/etjpwxc7mdaic', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ data: datosParaGuardar })
+        });
+
+        if (!response.ok) throw new Error('Error al agregar productos al inventario');
+
+        alert(`Se agregaron ${productos.length} productos nuevos al inventario`);
+        await fetchInventario(); // Actualizar el inventario local
+
+    } catch (error) {
+        console.error('Error:', error);
+        alert('Error al agregar productos al inventario: ' + error.message);
+    }
+}
+
+async function cargarEscaneosGuardados(filtro = '') {
+    try {
+        const response = await fetch('https://sheetdb.io/api/v1/etjpwxc7mdaic?sheet=Escaneados especiales');
+        if (!response.ok) throw new Error('Error al cargar escaneos');
+        
+        const datos = await response.json();
+        
+        // Agrupar por nombre de escaneo
+        const escaneosAgrupados = datos.reduce((grupos, item) => {
+            if (!grupos[item.Nombre]) {
+                grupos[item.Nombre] = [];
+            }
+            grupos[item.Nombre].push(item);
+            return grupos;
+        }, {});
+
+        // Filtrar por búsqueda si hay filtro
+        const nombresEscaneos = Object.keys(escaneosAgrupados)
+            .filter(nombre => nombre.toLowerCase().includes(filtro.toLowerCase()));
+
+        // Mostrar resultados
+        const contenedorEscaneos = document.getElementById('escaneosGuardados');
+        if (!contenedorEscaneos) {
+            console.error('No se encontró el contenedor de escaneos guardados');
+            return;
+        }
+
+        contenedorEscaneos.innerHTML = nombresEscaneos.length === 0 ? 
+            '<div class="alert alert-info">No se encontraron escaneos guardados</div>' :
+            nombresEscaneos.map(nombre => `
+                <div class="card mb-3">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">${nombre}</h5>
+                        <button class="btn btn-danger btn-sm" onclick="eliminarEscaneo('${nombre}')">
+                            Eliminar
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Archivo</th>
+                                    <th>Fecha</th>
+                                    <th>Código</th>
+                                    <th>Descripción</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${escaneosAgrupados[nombre].map(item => `
+                                    <tr>
+                                        <td>${item.Archivo || ''}</td>
+                                        <td>${item.Fecha || ''}</td>
+                                        <td>${item.Código || ''}</td>
+                                        <td>${item.Descripción || ''}</td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            `).join('');
+
+    } catch (error) {
+        console.error('Error:', error);
+        document.getElementById('escaneosGuardados').innerHTML = 
+            '<div class="alert alert-danger">Error al cargar escaneos guardados</div>';
+    }
+}
 // Función para mostrar resultados en tabla
 function renderTable() {
     const div = document.getElementById('extractedData');
@@ -2329,6 +2572,163 @@ function renderTable() {
             </tbody>
         </table>
     `;
+}
+// Agregar después de la función renderTable()
+// Función principal para guardar escaneo
+function guardarEscaneoEspecial() {
+    if (extractedData.length === 0) {
+        alert('No hay datos para guardar');
+        return;
+    }
+
+    // Limpiar cualquier modal existente
+    limpiarModales();
+
+
+    // Primero, limpiar cualquier modal existente
+    document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
+    document.body.classList.remove('modal-open');
+    document.body.style.removeProperty('overflow');
+    document.body.style.removeProperty('padding-right');
+
+    const modalHTML = `
+        <div class="modal" id="modalNombreEscaneo" tabindex="-1" role="dialog">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Guardar Escaneo</h5>
+                        <button type="button" class="btn-close" onclick="cerrarModalEscaneo()" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="form-group">
+                            <label for="nombreEscaneo">Nombre del escaneo:</label>
+                            <input type="text" class="form-control" id="nombreEscaneo" required>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" onclick="cerrarModalEscaneo()">Cancelar</button>
+                        <button type="button" class="btn btn-primary" onclick="confirmarGuardadoEscaneo()">Guardar</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+
+    // Remover modal anterior si existe
+    const modalAnterior = document.getElementById('modalNombreEscaneo');
+    if (modalAnterior) {
+        modalAnterior.remove();
+    }
+
+    // Agregar el nuevo modal
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+
+    // Mostrar el modal de manera manual
+    const modalElement = document.getElementById('modalNombreEscaneo');
+    modalElement.style.display = 'block';
+    modalElement.classList.add('show');
+    modalElement.style.backgroundColor = 'rgba(0,0,0,0.5)';
+
+    // Enfocar el input
+    document.getElementById('nombreEscaneo').focus();
+}
+
+// Función para cerrar el modal
+function cerrarModalEscaneo() {
+    const modalElement = document.getElementById('modalNombreEscaneo');
+    if (modalElement) {
+        modalElement.style.display = 'none';
+        modalElement.classList.remove('show');
+        modalElement.remove();
+        
+        // Limpiar backdrop y clases del body
+        document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
+        document.body.classList.remove('modal-open');
+        document.body.style.removeProperty('overflow');
+        document.body.style.removeProperty('padding-right');
+    }
+}
+
+// Función para confirmar el guardado
+async function confirmarGuardadoEscaneo() {
+    const nombreEscaneo = document.getElementById('nombreEscaneo').value.trim();
+    if (!nombreEscaneo) {
+        alert('Por favor ingresa un nombre para el escaneo');
+        return;
+    }
+
+    try {
+        // Obtener la fecha actual en formato YYYY-MM-DD
+        const fechaActual = new Date().toISOString().split('T')[0]; // Formato YYYY-MM-DD
+
+        // Preparar datos para guardar con los nombres exactos de las columnas
+        const datosParaGuardar = extractedData.map(item => ({
+            Nombre: nombreEscaneo,
+            Archivo: item.Archivo || '',
+            Fecha: fechaActual,
+            Cantidad: item.Cantidad || '',
+            Código: item.Codigo || '',     // Notar la tilde en 'Código'
+            Descripción: item.Descripcion || ''  // Notar la tilde en 'Descripción'
+        }));
+
+        const response = await fetch('https://sheetdb.io/api/v1/etjpwxc7mdaic?sheet=Escaneados especiales', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ data: datosParaGuardar })
+        });
+
+        if (!response.ok) throw new Error('Error al guardar en SheetDB');
+
+        // Cerrar el modal
+        cerrarModalEscaneo();
+
+        // Limpiar datos y UI
+        alert('Escaneo guardado exitosamente');
+        extractedData = [];
+        document.getElementById('extractedData').innerHTML = '';
+        document.getElementById('fileInput').value = '';
+        
+        // Actualizar lista de escaneos
+        await cargarEscaneosGuardados();
+
+    } catch (error) {
+        console.error('Error:', error);
+        alert('Error al guardar el escaneo: ' + error.message);
+    }
+}
+
+function cerrarModalEscaneo() {
+    const modalElement = document.getElementById('modalNombreEscaneo');
+    if (modalElement) {
+        const modal = bootstrap.Modal.getInstance(modalElement);
+        if (modal) {
+            modal.hide();
+        }
+        setTimeout(() => {
+            modalElement.remove();
+            limpiarModales();
+        }, 300);
+    }
+}
+
+// Función para eliminar escaneo
+async function eliminarEscaneo(nombre) {
+    if (!confirm(`¿Estás seguro de que deseas eliminar el escaneo "${nombre}"?`)) return;
+
+    try {
+        const response = await fetch(`https://sheetdb.io/api/v1/etjpwxc7mdaic/Nombre/${encodeURIComponent(nombre)}?sheet=Escaneados especiales`, {
+            method: 'DELETE'
+        });
+
+        if (!response.ok) throw new Error('Error al eliminar');
+
+        alert('Escaneo eliminado exitosamente');
+        cargarEscaneosGuardados();
+
+    } catch (error) {
+        console.error('Error:', error);
+        alert('Error al eliminar el escaneo: ' + error.message);
+    }
 }
 // Agregar después de la función calcularCombinaciones()
 function limpiarCalculadoraRapida() {
@@ -2862,9 +3262,33 @@ const facturaResultDiv = document.getElementById('facturaResult');
 const facturaLoadingDiv = document.getElementById('facturaLoading');
 const facturaClearBtn = document.getElementById('facturaClearBtn');
 const facturaProgressBar = document.getElementById('facturaProgressBar');
-let bloquesFacturas = []; // [{nombre, datos: [facturas]}]
-let archivosEscaneados = []; // [{nombreArchivo, productos: [...] }]
+let bloquesFacturas = []; 
+let archivosEscaneados = []; 
 let facturasParaGuardar = [];
+
+// AGREGAR AQUÍ LAS NUEVAS VARIABLES Y FUNCIONES ↓
+
+
+// Event listener para el botón de limpiar caché
+document.getElementById('facturasEspecialesCacheClearBtn').onclick = () => {
+    if (confirm('¿Estás seguro de que deseas eliminar todos los datos en caché de facturas especiales?')) {
+        const cacheKeys = Object.keys(localStorage).filter(key => 
+            key.startsWith('factura_especial_')
+        );
+        
+        if (cacheKeys.length > 0) {
+            cacheKeys.forEach(key => localStorage.removeItem(key));
+            alert('Caché de facturas especiales limpiado exitosamente');
+            
+            // Limpiar también la interfaz
+            document.getElementById('extractedData').innerHTML = '';
+            document.getElementById('log').style.display = 'none';
+            document.getElementById('fileInput').value = '';
+        } else {
+            alert('No hay datos en caché para limpiar');
+        }
+    }
+};
 
 // Agregar con los otros event listeners
 document.getElementById('facturaCacheClearBtn').onclick = () => {
@@ -3398,6 +3822,20 @@ function mostrarArchivosEscaneados() {
     facturaResultDiv.innerHTML = html;
 
 
+}
+
+// Agregar esta nueva función para manejar el toggle
+function toggleDetalleArchivo(idx) {
+    const detalle = document.getElementById(`detalleArchivo${idx}`);
+    const icon = document.querySelector(`.toggle-icon-archivo-${idx}`);
+    
+    if (detalle.classList.contains('show')) {
+        detalle.classList.remove('show');
+        icon.textContent = '▼';
+    } else {
+        detalle.classList.add('show');
+        icon.textContent = '▲';
+    }
 }
 
 function eliminarArchivoEscaneado(idx) {
