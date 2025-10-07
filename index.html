@@ -475,7 +475,31 @@ document.addEventListener('DOMContentLoaded', function() {
     // Mostrar el modal automáticamente al cargar la página
     // (sin verificar si ya fue visto antes)
     setTimeout(mostrarInstrucciones, 500); // Pequeño retraso para asegurar que todo esté cargado
-    
+     
+    // Agregar botón de ayuda
+    const btnAyuda = document.createElement('button');
+    btnAyuda.innerHTML = '❔ Ayuda';
+    btnAyuda.style.cssText = `
+        position: fixed;
+        bottom: 20px;
+        left: 20px;
+        background: #489051;
+        color: white;
+        border: none;
+        border-radius: 5px;
+        padding: 10px 15px;
+        cursor: pointer;
+        z-index: 999;
+        transition: all 0.3s ease;
+    `;
+    btnAyuda.onmouseover = function() {
+        this.style.transform = 'scale(1.1)';
+    };
+    btnAyuda.onmouseout = function() {
+        this.style.transform = 'scale(1)';
+    };
+    btnAyuda.onclick = mostrarInstrucciones;
+    document.body.appendChild(btnAyuda);
 </script>    
 
 <header>
