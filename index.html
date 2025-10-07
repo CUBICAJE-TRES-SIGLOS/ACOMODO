@@ -2517,33 +2517,154 @@ async function processFiles() {
 
     try {
         for (const file of files) {
-            // Procesar cada archivo
-            const { fecha, productos } = await extractDataFromPDF(file);
+            // Verificar caché primero
+            const cacheKey = `pdf_${file.name}_${file.lastModified}`;
+            const cachedData = getCache(cacheKey);
             
-            // Agregar los productos al array temporal con información del archivo
-            const fileRows = productos.map(producto => ({
-                Archivo: file.name,
-                Fecha: fecha,
-                Cantidad: producto.cantidad,
-                Codigo: producto.codigo,
-                Descripcion: producto.descripcion
-            }));
+            if (cachedData) {
+                escaneosActuales.push(...cachedData);
+                logDiv.innerHTML += `
+                    <div class="alert alert-info">
+                        <h6>Archivo: ${file.name}</h6>
+                        <p>✓ Usando datos en caché (${cachedData.length} productos)</p>
+                    </div>`;
+                continue;
+            }
 
-            // Agregar al array de escaneos actuales
-            escaneosActuales.push(...fileRows);
+            logDiv.innerHTML += `<p>Procesando: ${file.name}...</p>`;
             
-            logDiv.innerHTML += `
-                <p>Archivo: ${file.name}<br>
-                -> ${fileRows.length} productos extraídos</p>`;
+            try {
+                const { fecha, productos } = await extractDataFromPDF(file);
+                
+                const fileRows = productos
+                    .map(producto => {
+                        try {
+                            // Asegurarse que los valores sean strings antes de usar replace
+                            const cantidadStr = String(producto.cantidad || '0');
+                            const cantidad = parseFloat(cantidadStr.replace(/[^\d.]/g, '') || '0');
+                            const codigo = String(producto.codigo || '').replace(/[^\w\-]/g, '').trim();
+                            let descripcion = String(producto.descripcion || '')
+                                .replace(/\s+/g, ' ')
+                                .replace(/[^\w\s\-\/."]/g, '')
+                                .trim()
+                                .toUpperCase();
+
+                            if (!codigo || !descripcion) return null;
+
+                            const validaciones = {
+                                codigo: /^[A-Z0-9\-]{3,}$/i.test(codigo),
+                                cantidad: !isNaN(cantidad) && cantidad > 0,
+                                descripcion: descripcion.length >= 5
+                            };
+
+                            if (Object.values(validaciones).every(v => v)) {
+                                return {
+                                    Archivo: file.name,
+                                    Fecha: fecha,
+                                    Cantidad: cantidad,
+                                    Codigo: codigo,
+                                    Descripcion: descripcion,
+                                    TipoLlanta: determinarTipoLlanta(descripcion)
+                                };
+                            }
+                            return null;
+                        } catch (err) {
+                            console.warn('Error procesando producto:', err);
+                            return null;
+                        }
+                    })
+                    .filter(Boolean); // Elimina los valores null
+
+                if (fileRows.length > 0) {
+                    setCache(cacheKey, fileRows);
+                    escaneosActuales.push(...fileRows);
+                    
+                    const stats = {
+                        total: fileRows.length,
+                        cantidadValida: fileRows.filter(r => !isNaN(r.Cantidad)).length,
+                        codigoValido: fileRows.filter(r => r.Codigo).length,
+                        descripcionCompleta: fileRows.filter(r => r.Descripcion.length > 5).length
+                    };
+
+                    logDiv.innerHTML += `
+                        <div class="alert alert-success">
+                            <h6>Archivo: ${file.name}</h6>
+                            <p>✓ ${stats.total} productos extraídos correctamente</p>
+                            <div class="stats-detail">
+                                <small>
+                                    • Productos con cantidad válida: ${stats.cantidadValida}<br>
+                                    • Productos con código válido: ${stats.codigoValido}<br>
+                                    • Productos con descripción completa: ${stats.descripcionCompleta}
+                                </small>
+                            </div>
+                        </div>`;
+                } else {
+                    logDiv.innerHTML += `
+                        <div class="alert alert-warning">
+                            <h6>Archivo: ${file.name}</h6>
+                            <p>⚠️ No se pudieron extraer productos válidos</p>
+                        </div>`;
+                }
+
+            } catch (fileError) {
+                console.error(`Error procesando archivo ${file.name}:`, fileError);
+                logDiv.innerHTML += `
+                    <div class="alert alert-danger">
+                        <h6>Error en archivo: ${file.name}</h6>
+                        <p>${fileError.message}</p>
+                    </div>`;
+            }
         }
 
-        // Mostrar todos los escaneos acumulados
-        mostrarEscaneosPendientes();
+        if (escaneosActuales.length > 0) {
+            mostrarEscaneosPendientes();
+        }
         
     } catch (error) {
-        console.error('Error detallado:', error);
-        logDiv.innerHTML += `<p class="text-danger">Error: ${error.message}</p>`;
+        console.error('Error general:', error);
+        logDiv.innerHTML += `
+            <div class="alert alert-danger">
+                <h6>Error en el procesamiento</h6>
+                <p>${error.message}</p>z
+                <small>Revisa la consola para más detalles</small>
+            </div>`;
     }
+}
+// Función auxiliar para generar resumen final
+function generarResumenFinal(escaneos) {
+    const stats = escaneos.reduce((acc, item) => {
+        acc.totalProductos++;
+        acc.totalCantidad += item.Cantidad;
+        acc.tiposLlanta[item.TipoLlanta] = (acc.tiposLlanta[item.TipoLlanta] || 0) + 1;
+        return acc;
+    }, { totalProductos: 0, totalCantidad: 0, tiposLlanta: {} });
+
+    return `
+        <div class="alert alert-info mt-3">
+            <h5>Resumen Final</h5>
+            <p>Total de productos procesados: ${stats.totalProductos}</p>
+            <p>Cantidad total de llantas: ${stats.totalCantidad}</p>
+            <h6>Distribución por tipo:</h6>
+            <ul>
+                ${Object.entries(stats.tiposLlanta)
+                    .map(([tipo, cant]) => `<li>${tipo}: ${cant} productos</li>`)
+                    .join('')}
+            </ul>
+        </div>`;
+}
+
+// Función auxiliar para preprocesar imágenes
+async function preprocessImage(imageData) {
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    canvas.width = imageData.width;
+    canvas.height = imageData.height;
+    
+    // Aplicar filtros para mejorar la legibilidad
+    ctx.filter = 'contrast(1.2) brightness(1.1) grayscale(1)';
+    ctx.drawImage(imageData, 0, 0);
+    
+    return canvas;
 }
 
 // Función para mostrar los escaneos pendientes
@@ -4252,7 +4373,32 @@ function mostrarBloquesFacturas(filtro = '') {
             container.innerHTML += bloqueHTML;
         });
 }
-
+async function actualizarBloquesFacturas() {
+    try {
+        const res = await fetch('https://sheetdb.io/api/v1/01y446aor8vdu?sheet=facturas');
+        if (!res.ok) throw new Error('No se pudo cargar facturas');
+        
+        const facturas = await res.json();
+        bloquesFacturas = [];
+        let grupos = {};
+        
+        facturas.forEach(f => {
+            const grupo = f.Nombre || f.Folio || f["Fecha de Emisión"] || 'Sin nombre';
+            if (!grupos[grupo]) grupos[grupo] = [];
+            grupos[grupo].push(f);
+        });
+        
+        for (const nombre in grupos) {
+            bloquesFacturas.push({ nombre, datos: grupos[nombre] });
+        }
+        
+        mostrarBloquesFacturas();
+        return true;
+    } catch (error) {
+        console.error('Error actualizando bloques:', error);
+        return false;
+    }
+}
 // Modificar la función toggleDetalleBloque()
 function toggleDetalleBloque(idx) {
     const detalle = document.getElementById(`detalleBloque${idx}`);
