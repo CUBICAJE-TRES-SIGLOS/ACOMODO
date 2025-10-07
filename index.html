@@ -475,7 +475,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Mostrar el modal automáticamente al cargar la página
     // (sin verificar si ya fue visto antes)
     setTimeout(mostrarInstrucciones, 500); // Pequeño retraso para asegurar que todo esté cargado
-     
+    
     // Agregar botón de ayuda
     const btnAyuda = document.createElement('button');
     btnAyuda.innerHTML = '❔ Ayuda';
@@ -500,6 +500,7 @@ document.addEventListener('DOMContentLoaded', function() {
     };
     btnAyuda.onclick = mostrarInstrucciones;
     document.body.appendChild(btnAyuda);
+});
 </script>    
 
 <header>
