@@ -899,8 +899,8 @@ document.addEventListener('DOMContentLoaded', function() {
                                     Escanear PDFs
                                 </button>
                                 <button id="facturasEspecialesCacheClearBtn" class="btn btn-warning w-100 mb-3">
-                                   <i class="bi bi-trash"></i> Limpiar Caché
-                               </button>
+                                     <i class="bi bi-trash"></i> Limpiar Caché
+                                </button>
                                <div class="input-group mb-3">
                                    <span class="input-group-text">
                                        <i class="bi bi-search"></i>
@@ -3792,70 +3792,143 @@ let escaneosActuales = []; // Para almacenar temporalmente los escaneos antes de
 
 
 // Event listener para el botón de limpiar caché
-document.getElementById('facturasEspecialesCacheClearBtn').onclick = () => {
-    if (confirm('¿Estás seguro de que deseas eliminar todos los datos en caché de facturas especiales?')) {
-        const cacheKeys = Object.keys(localStorage).filter(key => 
-            key.startsWith('factura_especial_')
-        );
-        
-        if (cacheKeys.length > 0) {
-            cacheKeys.forEach(key => localStorage.removeItem(key));
-            alert('Caché de facturas especiales limpiado exitosamente');
+// Sistema de caché mejorado para facturas
+class FacturaCache {
+    static CACHE_PREFIX = {
+        FACTURA: 'factura_especial_',
+        PDF: 'pdf_'
+    };
+    
+    static TTL = 24 * 60 * 60 * 1000; // 24 horas en milisegundos
+
+    static getCacheKey(file) {
+        return `${this.CACHE_PREFIX.PDF}${file.name}_${file.lastModified}_${file.size}`;
+    }
+
+    static getCache(key) {
+        try {
+            const cached = localStorage.getItem(key);
+            if (!cached) return null;
             
-            // Limpiar también la interfaz
-            document.getElementById('extractedData').innerHTML = '';
-            document.getElementById('log').style.display = 'none';
-            document.getElementById('fileInput').value = '';
-        } else {
-            alert('No hay datos en caché para limpiar');
-        }
-    }
-};
-
-// Agregar con los otros event listeners
-document.getElementById('facturaCacheClearBtn').onclick = () => {
-    if (confirm('¿Estás seguro de que deseas eliminar todos los datos en caché?')) {
-        const cacheKeys = Object.keys(localStorage).filter(key => key.startsWith('pdf_'));
-        cacheKeys.forEach(key => localStorage.removeItem(key));
-        alert('Caché limpiado exitosamente');
-    }
-};
-
-// Agregar estas funciones para manejo de caché
-function getCacheKey(file) {
-    return `pdf_${file.name}_${file.lastModified}_${file.size}`;
-}
-
-function getCache(key) {
-    try {
-        const cached = localStorage.getItem(key);
-        if (!cached) return null;
-        
-        const data = JSON.parse(cached);
-        // Verificar si el caché tiene más de 24 horas
-        if (Date.now() - data.timestamp > 24 * 60 * 60 * 1000) {
-            localStorage.removeItem(key);
+            const data = JSON.parse(cached);
+            if (Date.now() - data.timestamp > this.TTL) {
+                localStorage.removeItem(key);
+                return null;
+            }
+            return data.content;
+        } catch (e) {
+            console.error('Error al leer caché:', e);
             return null;
         }
-        return data.content;
-    } catch (e) {
-        console.error('Error al leer caché:', e);
-        return null;
     }
-}
 
-function setCache(key, data) {
-    try {
-        const cacheData = {
-            timestamp: Date.now(),
-            content: data
+    static setCache(key, data) {
+        try {
+            const cacheData = {
+                timestamp: Date.now(),
+                content: data
+            };
+            localStorage.setItem(key, JSON.stringify(cacheData));
+            return true;
+        } catch (e) {
+            console.error('Error al guardar caché:', e);
+            return false;
+        }
+    }
+
+    static clearCache(type) {
+        const prefix = this.CACHE_PREFIX[type] || '';
+        const cacheKeys = Object.keys(localStorage)
+            .filter(key => key.startsWith(prefix));
+
+        if (cacheKeys.length === 0) {
+            return false;
+        }
+
+        cacheKeys.forEach(key => localStorage.removeItem(key));
+        return true;
+    }
+
+    static clearUI() {
+        const elements = {
+            extractedData: document.getElementById('extractedData'),
+            log: document.getElementById('log'),
+            fileInput: document.getElementById('fileInput')
         };
-        localStorage.setItem(key, JSON.stringify(cacheData));
-    } catch (e) {
-        console.error('Error al guardar caché:', e);
+
+        if (elements.extractedData) elements.extractedData.innerHTML = '';
+        if (elements.log) elements.log.style.display = 'none';
+        if (elements.fileInput) elements.fileInput.value = '';
     }
 }
 
+// Event Listeners mejorados
+document.addEventListener('DOMContentLoaded', () => {
+    // Botón para limpiar caché de facturas especiales
+    const btnFacturasEspeciales = document.getElementById('facturasEspecialesCacheClearBtn');
+    if (btnFacturasEspeciales) {
+        btnFacturasEspeciales.onclick = () => {
+            if (!confirm('¿Estás seguro de que deseas eliminar todos los datos en caché de facturas especiales?')) {
+                return;
+            }
+
+            const cleared = FacturaCache.clearCache('FACTURA');
+            if (cleared) {
+                FacturaCache.clearUI();
+                mostrarNotificacion('Caché de facturas especiales limpiado exitosamente', 'success');
+            } else {
+                mostrarNotificacion('No hay datos en caché para limpiar', 'info');
+            }
+        };
+    }
+
+    // Botón para limpiar caché general de PDFs
+    const btnCacheClear = document.getElementById('facturaCacheClearBtn');
+    if (btnCacheClear) {
+        btnCacheClear.onclick = () => {
+            if (!confirm('¿Estás seguro de que deseas eliminar todos los datos en caché?')) {
+                return;
+            }
+
+            const cleared = FacturaCache.clearCache('PDF');
+            if (cleared) {
+                mostrarNotificacion('Caché limpiado exitosamente', 'success');
+            }
+        };
+    }
+});
+
+// Función auxiliar para mostrar notificaciones
+function mostrarNotificacion(mensaje, tipo = 'info') {
+    const notificacion = document.createElement('div');
+    notificacion.className = `alert alert-${tipo} notification-popup`;
+    notificacion.style.cssText = `
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        z-index: 1000;
+        padding: 15px;
+        border-radius: 5px;
+        animation: slideIn 0.5s ease-out;
+    `;
+    notificacion.textContent = mensaje;
+    
+    document.body.appendChild(notificacion);
+    setTimeout(() => notificacion.remove(), 3000);
+}
+
+// Agregar estilos necesarios
+const style = document.createElement('style');
+style.textContent = `
+    @keyframes slideIn {
+        from { transform: translateX(100%); }
+        to { transform: translateX(0); }
+    }
+    .notification-popup {
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+`;
+document.head.appendChild(style);
 // Modificar el onclick del botón de escaneo
 facturaScanBtn.onclick = async () => {
     const files = Array.from(facturaPdfInput.files);
