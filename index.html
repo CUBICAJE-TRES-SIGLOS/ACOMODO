@@ -688,13 +688,14 @@ document.addEventListener('DOMContentLoaded', function() {
                      </div>
                      <div class="col-md-3">
                          <label>Tipo de Llanta</label>
-                         <select id="quickCheckTipo" class="form-control">
-                             <option value="AUTO">Auto</option>
-                             <option value="CAMION">Camión</option>
-                             <option value="AGRICOLA">Agrícola</option>
-                             <option value="INDUSTRIAL">Industrial/OTR</option>
-                             <option value="SUV">SUV/4x4</option>
-                         </select>
+                         <select class="form-control tipo-llanta">
+                             <option value="AUTO">Auto pequeño/compacto</option>
+                             <option value="SUV_CAMIONETA">Camioneta / SUV</option>
+                             <option value="COMERCIAL_LIGERO">Comerciales ligeros</option>
+                             <option value="PESADO">Camiones pesados</option>
+                             <option value="AGRICOLA_MINERO">Agrícolas / especiales</option>
+                             <option value="CAMARAS">Cámaras y otros</option>
+                        </select>
                      </div>
                      <div class="col-md-4 d-flex align-items-end">
                          <button onclick="verificacionRapida()" class="btn btn-primary">
@@ -2430,27 +2431,30 @@ function calcularCombinaciones() {
     // Valores promedio por tipo
     const valoresPromedio = {
         'AUTO': { 
-            volumen: 0.048,
-            peso: 8
-           // Un valor intermedio entre AUTO y SUV
-        },
-        'SUV_CAMIONETA': { 
-            volumen: 0.080,
-            peso: 15
-        },
-        'COMERCIAL_LIGERO': { 
-            volumen: 0.150,
-            peso: 45
-        },
-        'PESADO': { 
-            volumen: 0.300,
-            peso: 60
-        },
-        'AGRICOLA_MINERO': { 
-            volumen: 1.2,
-            peso: 150
-        }
-    };
+           volumen: 0.035,  // 35 litros = 0.035 m³
+           peso: 7         // 7 kg promedio
+       },
+       'SUV_CAMIONETA': { 
+           volumen: 0.060,  // 60 litros = 0.060 m³
+           peso: 12.5      // 12.5 kg promedio
+       },
+      'COMERCIAL_LIGERO': { 
+           volumen: 0.100,  // 100 litros = 0.100 m³
+           peso: 25        // 25 kg promedio
+       },
+      'PESADO': { 
+           volumen: 0.200,  // 200 litros = 0.200 m³
+           peso: 50        // 50 kg promedio
+       },
+      'AGRICOLA_MINERO': { 
+           volumen: 0.450,  // 450 litros = 0.450 m³
+           peso: 80        // 80 kg promedio
+       },
+      'CAMARAS': {
+           volumen: 0.010,  // 10 litros = 0.010 m³
+           peso: 2         // 2 kg promedio
+      }
+   };
 
     let volumenTotal = 0;
     let pesoTotal = 0;
