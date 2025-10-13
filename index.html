@@ -524,7 +524,7 @@ document.addEventListener('DOMContentLoaded', function() {
         <div class="search-and-button">
             <input type="text" id="searchInventario" class="search-bar" placeholder="Buscar por ID Llanta..." oninput="searchInventario()" />
             <button class="primary" onclick="openModal('modalInventario')">Agregar Llanta</button>
-            <button class="primary" onclick="fetchInventario()">Actualizar inventario</button>
+            <button class="primary" onclick="calcularPesosInventario()">Calcular Pesos Aproximados</button>
             <button class="primary" onclick="calcularVolumenInventario()">Calcular Volúmenes</button>
         </div>
 
@@ -1400,6 +1400,162 @@ function renderInventario() {
         tbody.appendChild(tr);
     });
     highlightSearch('inventario', document.getElementById('searchInventario').value);
+}
+async function calcularPesosInventario() {
+    let filasActualizadas = [];
+    let noCalculadas = [];
+    let filasFallidas = [];
+
+    try {
+        mostrarEstado('Iniciando cálculos de peso...');
+        
+        for (const llanta of inventario) {
+            if (!llanta.peso || Number(llanta.peso) === 0) {
+                let desc = (llanta.descripcion || '').replace(/[()]/g, '').toUpperCase();
+                let peso = 0;
+
+                // Patrones de medidas específicos para diferentes tipos
+                const patrones = [
+                    // 1. Llantas de camión pesado
+                    {
+                        regex: /(\d{3})\/(\d{2})R(\d{2}\.?\d*)/i,
+                        calc: (m) => {
+                            const ancho = Number(m[1]);
+                            const perfil = Number(m[2]);
+                            const rin = Number(m[3]);
+                            return (ancho * perfil/100 * rin/25.4) * 0.45;
+                        },
+                        tipo: 'CAMION'
+                    },
+
+                    // 2. Llantas agrícolas
+                    {
+                        regex: /^(\d+\.?\d*)[-\/](\d+)[-\/]?(\d+)/i,
+                        calc: (m) => {
+                            const ancho = Number(m[1]);
+                            const rin = Number(m[3]);
+                            // Factor de peso más alto para agrícolas
+                            return ancho * rin * 0.8;
+                        },
+                        tipo: 'AGRICOLA'
+                    },
+
+                    // 3. Llantas industriales/OTR
+                    {
+                        regex: /(\d+\.?\d*)L-(\d+)\s*(?:\((\d{1,2})\))?/i,
+                        calc: (m) => {
+                            const ancho = Number(m[1]);
+                            const rin = Number(m[2]);
+                            const capas = m[3] ? Number(m[3]) : 12;
+                            // Factor base más ajuste por capas
+                            return ancho * rin * 0.9 * (1 + (capas-8)*0.1);
+                        },
+                        tipo: 'INDUSTRIAL'
+                    },
+
+                    // 4. Llantas de auto/SUV
+                    {
+                        regex: /(\d{3})\/(\d{2})[R]?(\d{2})/i,
+                        calc: (m) => {
+                            const ancho = Number(m[1]);
+                            const perfil = Number(m[2]);
+                            const rin = Number(m[3]);
+                            return (ancho * perfil/100 * rin/25.4) * 0.2;
+                        },
+                        tipo: 'AUTO'
+                    }
+                ];
+
+                // Factores de ajuste específicos
+                const factoresAjuste = {
+                    'XL': 1.15,    // Extra Load
+                    'RF': 1.20,    // Reinforced
+                    'PR': 1.10,    // Ply Rating base
+                    'SKS': 1.30,   // Super resistentes
+                    'L5': 1.40,    // L5 extra profundo
+                    'SOLID': 2.0   // Macizas
+                };
+
+                // Determinar tipo base por descripción
+                let tipoBase = '';
+                if (desc.match(/AGRICOLA|TRACTOR|R-1/)) tipoBase = 'AGRICOLA';
+                else if (desc.match(/OTR|INDUSTRIAL|L-[2-5]|SKS/)) tipoBase = 'INDUSTRIAL';
+                else if (desc.match(/CAMION|295|315|385/)) tipoBase = 'CAMION';
+                else if (desc.match(/4X4|SUV|LT|PICKUP/)) tipoBase = 'SUV';
+                else tipoBase = 'AUTO';
+
+                // Buscar patrón coincidente
+                let pesoBase = 0;
+                for (const patron of patrones) {
+                    const match = desc.match(patron.regex);
+                    if (match) {
+                        pesoBase = patron.calc(match);
+                        break;
+                    }
+                }
+
+                // Aplicar factores de ajuste
+                let factorTotal = 1.0;
+                for (const [clave, factor] of Object.entries(factoresAjuste)) {
+                    if (desc.includes(clave)) factorTotal *= factor;
+                }
+
+                // Ajustes adicionales por número de capas
+                const capasMatch = desc.match(/\((\d{1,2})\)/);
+                if (capasMatch) {
+                    const capas = Number(capasMatch[1]);
+                    if (capas > 8) factorTotal *= (1 + (capas-8)*0.05);
+                }
+
+                // Ajustes por material/construcción
+                if (desc.includes('STEEL')) factorTotal *= 1.15;
+                if (desc.includes('RADIAL')) factorTotal *= 1.1;
+                if (desc.includes('NYLON')) factorTotal *= 0.9;
+
+                // Cálculo final del peso
+                peso = pesoBase * factorTotal;
+
+                // Redondeo y validación final
+                if (peso > 0) {
+                    peso = Math.round(peso * 100) / 100; // Redondeo a 2 decimales
+
+                    try {
+                        const res = await fetch(`https://sheetdb.io/api/v1/q2bb6vm0207xm/clave/${llanta.clave}`, {
+                            method: 'PATCH',
+                            headers: {'Content-Type': 'application/json'},
+                            body: JSON.stringify({ data: { peso: peso } })
+                        });
+
+                        if (!res.ok) throw new Error('Error en PATCH');
+                        llanta.peso = peso;
+                        filasActualizadas.push({
+                            clave: llanta.clave,
+                            peso: peso,
+                            tipo: tipoBase
+                        });
+                    } catch (err) {
+                        filasFallidas.push({
+                            clave: llanta.clave,
+                            descripcion: desc,
+                            error: err.message
+                        });
+                    }
+                } else {
+                    noCalculadas.push({
+                        clave: llanta.clave,
+                        descripcion: desc
+                    });
+                }
+            }
+        }
+
+        renderInventario();
+        mostrarResultadosCalculo(noCalculadas, filasActualizadas, filasFallidas);
+
+    } catch (error) {
+        console.error('Error en cálculos:', error);
+        mostrarEstado(`Error: ${error.message}`, 'error');
+    }
 }
 // ...existing code...
 
