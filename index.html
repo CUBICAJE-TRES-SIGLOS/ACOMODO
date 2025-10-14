@@ -792,7 +792,47 @@ document.addEventListener('DOMContentLoaded', function() {
     <!-- Sugerencia de Unidad -->
     <div id="sugerencia-unidad" class="tabcontent" style="max-width: 1000px;">
         <h3>Sugerencia de Unidad</h3>
-        <div class="card mb-3">
+        
+        <!-- Botones de modo -->
+        <div class="btn-group mb-3" role="group" aria-label="Modo de sugerencia">
+            <button type="button" class="btn btn-primary active" id="btnModoCalculadora" onclick="cambiarModoSugerencia('calculadora')">
+                Calculadora
+            </button>
+            <button type="button" class="btn btn-primary" id="btnModoBusqueda" onclick="cambiarModoSugerencia('busqueda')">
+                Búsqueda de Bloques
+            </button>
+        </div>
+
+        <!-- Modo Calculadora -->
+        <div id="modoCalculadora">
+            <!-- Sección de Unidad Sugerida para modo calculadora -->
+            <div id="seccionUnidadSugeridaCalculadora" class="card mb-3" style="display: none;">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0">Unidad Sugerida</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-bordered">
+                            <thead class="bg-light">
+                                <tr>
+                                    <th>Unidad</th>
+                                    <th>Económico</th>
+                                    <th>Cap. Volumen</th>
+                                    <th>Cap. Peso</th>
+                                    <th style="width: 150px">Uso Volumen</th>
+                                    <th style="width: 150px">Uso Peso</th>
+                                    <th style="width: 150px">Eficiencia</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tablaUnidadesSugeridasCalculadora">
+                                <!-- Las unidades sugeridas se insertarán aquí -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card mb-3">
             <div class="card-header">
                 <h5>Agregar Llantas al Cálculo</h5>
             </div>
@@ -848,6 +888,75 @@ document.addEventListener('DOMContentLoaded', function() {
                 <h5 class="card-title">Unidad Sugerida</h5>
                 <div id="unidadSugeridaDetalles"></div>
             </div>
+        </div>
+    </div>
+
+    <!-- Modo Búsqueda de Bloques -->
+    <div id="modoBusqueda" style="display: none;">
+        <!-- Buscador -->
+        <div class="card mb-3">
+            <div class="card-body">
+                <input type="text" 
+                       class="form-control form-control-lg" 
+                       id="busquedaBloque" 
+                       placeholder="Buscar bloques por nombre o contenido..." 
+                       oninput="buscarBloques()"
+                       autocomplete="off">
+            </div>
+        </div>
+
+        <!-- Resultados de búsqueda -->
+        <div id="resultadosBusqueda" class="mb-4"></div>
+
+        <!-- Sección de Unidad Sugerida para modo búsqueda -->
+        <div id="seccionUnidadSugeridaBusqueda" class="card mb-3" style="display: none;">
+            <div class="card-header bg-success text-white">
+                <h5 class="mb-0">Unidad Sugerida</h5>
+            </div>
+            <div class="card-body p-0"> <!-- Removido el padding para que se vea más compacto -->
+                <div class="table-responsive">
+                    <table class="table table-bordered mb-0">
+                        <thead class="bg-light">
+                            <tr>
+                                <th>Unidad</th>
+                                <th>Económico</th>
+                                <th>Cap. Volumen</th>
+                                <th>Cap. Peso</th>
+                                <th style="width: 150px">Uso Volumen</th>
+                                <th style="width: 150px">Uso Peso</th>
+                                <th style="width: 150px">Eficiencia</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tablaUnidadesSugeridasBusqueda">
+                            <!-- Las unidades sugeridas se insertarán aquí -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Contenedor para los detalles del bloque seleccionado -->
+        <div class="card mb-3">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">Llantas en el Bloque</h5>
+            </div>
+            <div class="card-body">
+                <table class="table table-striped" id="tablaLlantasSeleccionadas">
+                    <thead>
+                        <tr>
+                            <th>Tipo de Llanta</th>
+                            <th>Cantidad</th>
+                            <th>Volumen Total</th>
+                            <th>Peso Total</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+                <div id="totalLlantas" class="alert alert-info mt-3" style="display: none;"></div>
+            </div>
+        </div>
+    </div>
         </div>
     </div>
 
@@ -5122,14 +5231,602 @@ function toggleDetalleBloque(idx) {
 }
 
 // Agrega esta función para expandir/colapsar el detalle
-function toggleDetalleBloque(idx) {
-    const detalle = document.getElementById('detalleBloque' + idx);
+function mostrarDetalles(idx) {
+    const detalle = document.getElementById(`detalles_${idx}`);
+    const bloque = bloquesFacturas[idx];
+    
     if (detalle.style.display === 'none') {
+        // Generar contenido de detalles
+        detalle.innerHTML = `
+            <table class="table table-sm">
+                <thead>
+                    <tr>
+                        <th>Cantidad</th>
+                        <th>Código</th>
+                        <th>Descripción</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${bloque.datos.map(item => `
+                        <tr>
+                            <td>${item.Cantidad || ''}</td>
+                            <td>${item.Código || ''}</td>
+                            <td>${item.Descripción || ''}</td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        `;
         detalle.style.display = 'block';
     } else {
         detalle.style.display = 'none';
     }
 }
+
+// Funciones para el manejo de modos en Sugerencia de Unidad
+function cambiarModoSugerencia(modo) {
+    const modoCalculadora = document.getElementById('modoCalculadora');
+    const modoBusqueda = document.getElementById('modoBusqueda');
+    const btnCalculadora = document.getElementById('btnModoCalculadora');
+    const btnBusqueda = document.getElementById('btnModoBusqueda');
+
+    if (modo === 'calculadora') {
+        modoCalculadora.style.display = 'block';
+        modoBusqueda.style.display = 'none';
+        btnCalculadora.classList.add('active');
+        btnBusqueda.classList.remove('active');
+    } else {
+        modoCalculadora.style.display = 'none';
+        modoBusqueda.style.display = 'block';
+        btnCalculadora.classList.remove('active');
+        btnBusqueda.classList.add('active');
+    }
+}
+
+// Función para buscar bloques
+function calcularTotalesBloque(datos) {
+    let totalVolumen = 0;
+    let totalPeso = 0;
+    let cantidadTotal = 0;
+    
+    datos.forEach(item => {
+        const cantidad = parseInt(item.Cantidad) || 0;
+        cantidadTotal += cantidad;
+        
+        // Aquí deberías obtener el volumen y peso por tipo de llanta
+        const tipoLlanta = determinarTipoLlanta(item.Descripción);
+        const { volumen, peso } = obtenerMedidasPorTipo(tipoLlanta);
+        
+        totalVolumen += cantidad * volumen;
+        totalPeso += cantidad * peso;
+    });
+    
+    return { totalVolumen, totalPeso, cantidadTotal };
+}
+
+function determinarTipoLlanta(descripcion) {
+    // Lógica para determinar el tipo de llanta basado en la descripción
+    descripcion = descripcion.toLowerCase();
+    if (descripcion.includes('auto') || descripcion.includes('compacto')) return 'AUTO';
+    if (descripcion.includes('suv') || descripcion.includes('camioneta')) return 'SUV_CAMIONETA';
+    if (descripcion.includes('comercial')) return 'COMERCIAL_LIGERO';
+    if (descripcion.includes('camion')) return 'PESADO';
+    if (descripcion.includes('agricola') || descripcion.includes('minero')) return 'AGRICOLA_MINERO';
+    return 'AUTO'; // por defecto
+}
+
+function obtenerMedidasPorTipo(tipo) {
+    const medidas = {
+        'AUTO': { volumen: 0.047, peso: 7 },
+        'SUV_CAMIONETA': { volumen: 0.075, peso: 15 },
+        'COMERCIAL_LIGERO': { volumen: 0.12, peso: 25 },
+        'PESADO': { volumen: 0.25, peso: 50 },
+        'AGRICOLA_MINERO': { volumen: 0.5, peso: 100 }
+    };
+    return medidas[tipo] || medidas['AUTO'];
+}
+
+function seleccionarBloque(idx) {
+    const bloque = bloquesFacturas[idx];
+    
+    // Limpiar búsqueda y ocultar resultados
+    document.getElementById('busquedaBloque').value = '';
+    document.getElementById('resultadosBusqueda').innerHTML = '';
+    
+    // Mostrar la sección de unidad sugerida para el modo búsqueda
+    const seccionUnidadSugerida = document.getElementById('seccionUnidadSugeridaBusqueda');
+    seccionUnidadSugerida.style.display = 'block';
+    
+    let volumenTotalBloque = 0;
+    let pesoTotalBloque = 0;
+    let totalLlantas = 0;
+    
+    // Calcular totales para cada llanta
+    const llantas = bloque.datos.map(item => {
+        const cantidad = parseInt(item.Cantidad) || 0;
+        totalLlantas += cantidad;
+        const medidas = obtenerMedidasPorTipo(determinarTipoLlanta(item.Descripción));
+        const volumenTotal = medidas.volumen * cantidad;
+        const pesoTotal = medidas.peso * cantidad;
+        
+        volumenTotalBloque += volumenTotal;
+        pesoTotalBloque += pesoTotal;
+        
+        return {
+            descripcion: item.Descripción,
+            cantidad: cantidad,
+            codigo: item.Código,
+            volumenTotal: volumenTotal,
+            pesoTotal: pesoTotal
+        };
+    });
+    
+    // Calcular totales generales
+    const totalVolumen = llantas.reduce((sum, item) => sum + item.volumenTotal, 0);
+    const totalPeso = llantas.reduce((sum, item) => sum + item.pesoTotal, 0);
+    const cantidadTotal = llantas.reduce((sum, item) => sum + item.cantidad, 0);
+    
+    // Actualizar tabla de llantas seleccionadas
+    const tablaLlantas = document.getElementById('tablaLlantasSeleccionadas').querySelector('tbody');
+    tablaLlantas.innerHTML = llantas.map(item => `
+        <tr>
+            <td>${item.descripcion || ''}</td>
+            <td>${item.cantidad || ''}</td>
+            <td>${item.volumenTotal.toFixed(2)} m³</td>
+            <td>${item.pesoTotal.toFixed(2)} kg</td>
+            <td>
+                <button class="btn btn-danger btn-sm" onclick="eliminarFila(this)">
+                    <i class="bi bi-trash"></i>
+                </button>
+            </td>
+        </tr>
+    `).join('');
+
+    // Mostrar el total de llantas
+    const totalLlantasDiv = document.getElementById('totalLlantas');
+    totalLlantasDiv.style.display = 'block';
+    totalLlantasDiv.innerHTML = `
+        <div class="alert alert-info">
+            <strong>Resumen de carga:</strong><br>
+            • Total de llantas: ${totalLlantas}<br>
+            • Volumen total: ${volumenTotalBloque.toFixed(2)} m³<br>
+            • Peso total: ${pesoTotalBloque.toFixed(2)} kg
+        </div>
+    `;
+
+    // Obtener y mostrar las unidades sugeridas
+    const tablaSugerencias = document.getElementById('tablaUnidadesSugeridasBusqueda');
+    const unidadesDisponibles = obtenerUnidadesFlota();
+    
+    // Filtrar unidades válidas y ordenar por eficiencia
+    const unidadesOptimas = unidadesDisponibles
+        .filter(u => u.capacidadVolumen >= volumenTotalBloque && u.capacidadPeso >= pesoTotalBloque)
+        .sort((a, b) => {
+            const eficienciaA = Math.min(volumenTotalBloque/a.capacidadVolumen, pesoTotalBloque/a.capacidadPeso);
+            const eficienciaB = Math.min(volumenTotalBloque/b.capacidadVolumen, pesoTotalBloque/b.capacidadPeso);
+            return eficienciaB - eficienciaA;
+        });
+
+    if (unidadesOptimas.length === 0) {
+        tablaSugerencias.innerHTML = `
+            <tr>
+                <td colspan="7">
+                    <div class="alert alert-warning mb-0">
+                        <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                        No se encontró ninguna unidad que pueda transportar esta carga.
+                    </div>
+                </td>
+            </tr>
+        `;
+        return;
+    }
+
+    tablaSugerencias.innerHTML = unidadesOptimas.map(unidad => {
+        const usoVolumen = (volumenTotalBloque/unidad.capacidadVolumen * 100).toFixed(1);
+        const usoPeso = (pesoTotalBloque/unidad.capacidadPeso * 100).toFixed(1);
+        const eficiencia = Math.min(parseFloat(usoVolumen), parseFloat(usoPeso));
+        
+        return `
+            <tr>
+                <td>${unidad.nombre}</td>
+                <td>${unidad.codigo}</td>
+                <td>${unidad.capacidadVolumen} m³</td>
+                <td>${unidad.capacidadPeso} kg</td>
+                <td>
+                    <div class="progress" style="height: 20px;">
+                        <div class="progress-bar bg-primary" 
+                             role="progressbar" 
+                             style="width: ${usoVolumen}%" 
+                             title="Uso de volumen: ${usoVolumen}%">
+                            ${usoVolumen}%
+                        </div>
+                    </div>
+                </td>
+                <td>
+                    <div class="progress" style="height: 20px;">
+                        <div class="progress-bar bg-warning" 
+                             role="progressbar" 
+                             style="width: ${usoPeso}%" 
+                             title="Uso de peso: ${usoPeso}%">
+                            ${usoPeso}%
+                        </div>
+                    </div>
+                </td>
+                <td>
+                    <div class="progress" style="height: 20px;">
+                        <div class="progress-bar bg-success" 
+                             role="progressbar" 
+                             style="width: ${eficiencia}%" 
+                             title="Eficiencia global: ${eficiencia}%">
+                            ${eficiencia}%
+                        </div>
+                    </div>
+                </td>
+            </tr>
+        `;
+    }).join('');
+    
+    // Mostrar totales
+    document.getElementById('totalLlantas').innerHTML = `
+        <div class="alert alert-info">
+            <strong>Resumen de carga:</strong><br>
+            • ${cantidadTotal} llantas en total<br>
+            • Volumen total de carga: ${totalVolumen.toFixed(2)} m³<br>
+            • Peso total de carga: ${totalPeso.toFixed(2)} kg
+        </div>
+    `;
+    
+    // Calcular y mostrar unidad sugerida
+    const resultadoDiv = document.getElementById('resultadoSugerencia');
+    resultadoDiv.classList.remove('d-none');
+    
+    const unidades = [
+        { 
+            nombre: "DODGE (D600) ROJO", 
+            codigo: "3S04", 
+            capacidadVolumen: 51, 
+            capacidadPeso: 11000,
+            color: "danger"
+        },
+        { 
+            nombre: "DINA (600) AMARILLO", 
+            codigo: "3S01", 
+            capacidadVolumen: 70, 
+            capacidadPeso: 8000,
+            color: "warning"
+        }
+    ];
+    
+    // Encontrar la unidad más eficiente
+    const unidadesValidas = unidades.filter(u => 
+        u.capacidadVolumen >= totalVolumen && u.capacidadPeso >= totalPeso
+    );
+    
+    const detallesDiv = document.getElementById('unidadSugeridaDetalles');
+    
+    if (unidadesValidas.length === 0) {
+        detallesDiv.innerHTML = `
+            <div class="alert alert-warning">
+                <i class="bi bi-exclamation-triangle"></i>
+                No se encontró una unidad adecuada para esta carga.
+            </div>
+        `;
+        return;
+    }
+    
+    const mejorUnidad = unidadesValidas.sort((a, b) => {
+        const eficienciaA = Math.min(totalVolumen/a.capacidadVolumen, totalPeso/a.capacidadPeso);
+        const eficienciaB = Math.min(totalVolumen/b.capacidadVolumen, totalPeso/b.capacidadPeso);
+        return eficienciaB - eficienciaA;
+    })[0];
+    
+    const usoVolumen = (totalVolumen/mejorUnidad.capacidadVolumen * 100).toFixed(1);
+    const usoPeso = (totalPeso/mejorUnidad.capacidadPeso * 100).toFixed(1);
+    const eficiencia = Math.min(
+        (totalVolumen/mejorUnidad.capacidadVolumen * 100),
+        (totalPeso/mejorUnidad.capacidadPeso * 100)
+    ).toFixed(1);
+    
+    detallesDiv.innerHTML = `
+        <div class="table-responsive">
+            <table class="table table-bordered">
+                <thead class="table-light">
+                    <tr>
+                        <th>Unidad</th>
+                        <th>Económico</th>
+                        <th>Cap. Volumen</th>
+                        <th>Cap. Peso</th>
+                        <th>Uso Volumen</th>
+                        <th>Uso Peso</th>
+                        <th>Eficiencia</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>${mejorUnidad.nombre}</td>
+                        <td>${mejorUnidad.codigo}</td>
+                        <td>${mejorUnidad.capacidadVolumen} m³</td>
+                        <td>${mejorUnidad.capacidadPeso} kg</td>
+                        <td>
+                            <div class="progress">
+                                <div class="progress-bar bg-primary" 
+                                     role="progressbar" 
+                                     style="width: ${usoVolumen}%" 
+                                     aria-valuenow="${usoVolumen}" 
+                                     aria-valuemin="0" 
+                                     aria-valuemax="100">
+                                    ${usoVolumen}%
+                                </div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="progress">
+                                <div class="progress-bar bg-warning" 
+                                     role="progressbar" 
+                                     style="width: ${usoPeso}%" 
+                                     aria-valuenow="${usoPeso}" 
+                                     aria-valuemin="0" 
+                                     aria-valuemax="100">
+                                    ${usoPeso}%
+                                </div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="progress">
+                                <div class="progress-bar bg-success" 
+                                     role="progressbar" 
+                                     style="width: ${eficiencia}%" 
+                                     aria-valuenow="${eficiencia}" 
+                                     aria-valuemin="0" 
+                                     aria-valuemax="100">
+                                    ${eficiencia}%
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    `;
+}
+
+function calcularUnidadSugerida(volumenTotal, pesoTotal) {
+    // Obtener las unidades de la flota
+    const unidades = obtenerUnidadesFlota();
+    
+    const resultadoDiv = document.getElementById('resultadoSugerencia');
+    const detallesDiv = document.getElementById('unidadSugeridaDetalles');
+    
+    // Encontrar las unidades válidas
+    const unidadesValidas = unidades.filter(u => 
+        u.capacidadVolumen >= volumenTotal && u.capacidadPeso >= pesoTotal
+    );
+
+    detallesDiv.innerHTML = `
+        <div class="card">
+            <div class="card-header bg-success text-white">
+                <h5 class="mb-0">Unidad Sugerida</h5>
+            </div>
+            <div class="card-body">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Unidad</th>
+                            <th>Económico</th>
+                            <th>Cap. Volumen</th>
+                            <th>Cap. Peso</th>
+                            <th style="width: 150px">Uso Volumen</th>
+                            <th style="width: 150px">Uso Peso</th>
+                            <th style="width: 150px">Eficiencia</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+    `;
+    
+    if (unidadesValidas.length === 0) {
+        detallesDiv.innerHTML += `
+                    </tbody>
+                </table>
+                <div class="alert alert-warning mt-3">
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                    No se encontró ninguna unidad que pueda transportar esta carga.
+                </div>
+            </div>
+        </div>`;
+    } else {
+        // Ordenar por eficiencia
+        const unidadesOrdenadas = unidadesValidas.sort((a, b) => {
+            const eficienciaA = Math.min(volumenTotal/a.capacidadVolumen, pesoTotal/a.capacidadPeso);
+            const eficienciaB = Math.min(volumenTotal/b.capacidadVolumen, pesoTotal/b.capacidadPeso);
+            return eficienciaB - eficienciaA;
+        });
+
+        // Mostrar las unidades ordenadas por eficiencia
+        const htmlUnidades = unidadesOrdenadas.map(unidad => {
+            const usoVolumen = (volumenTotal/unidad.capacidadVolumen * 100).toFixed(1);
+            const usoPeso = (pesoTotal/unidad.capacidadPeso * 100).toFixed(1);
+            const eficiencia = Math.min(parseFloat(usoVolumen), parseFloat(usoPeso));
+            
+            return `
+                <tr>
+                    <td>${unidad.nombre}</td>
+                    <td>${unidad.codigo}</td>
+                    <td>${unidad.capacidadVolumen} m³</td>
+                    <td>${unidad.capacidadPeso} kg</td>
+                    <td>
+                        <div class="progress" style="height: 20px;">
+                            <div class="progress-bar bg-primary" 
+                                 role="progressbar" 
+                                 style="width: ${usoVolumen}%" 
+                                 title="Uso de volumen: ${usoVolumen}%">
+                                ${usoVolumen}%
+                            </div>
+                        </div>
+                    </td>
+                    <td>
+                        <div class="progress" style="height: 20px;">
+                            <div class="progress-bar bg-warning" 
+                                 role="progressbar" 
+                                 style="width: ${usoPeso}%" 
+                                 title="Uso de peso: ${usoPeso}%">
+                                ${usoPeso}%
+                            </div>
+                        </div>
+                    </td>
+                    <td>
+                        <div class="progress" style="height: 20px;">
+                            <div class="progress-bar bg-success" 
+                                 role="progressbar" 
+                                 style="width: ${eficiencia}%" 
+                                 title="Eficiencia global: ${eficiencia}%">
+                                ${eficiencia}%
+                            </div>
+                        </div>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+
+        detallesDiv.innerHTML += htmlUnidades + `
+                    </tbody>
+                </table>
+            </div>
+        </div>`;
+    }
+
+    resultadoDiv.classList.remove('d-none');
+}
+
+function limpiarSeleccion() {
+    // Limpiar tabla de llantas agregadas
+    const tablaLlantas = document.getElementById('tablaLlantasAgregadas').querySelector('tbody');
+    tablaLlantas.innerHTML = '';
+    
+    // Ocultar resultado de sugerencia
+    const resultadoDiv = document.getElementById('resultadoSugerencia');
+    resultadoDiv.classList.add('d-none');
+    
+    // Limpiar totales
+    document.getElementById('totalLlantas').innerHTML = '';
+}
+
+function obtenerUnidadesFlota() {
+    // Obtener las unidades de la pestaña de flota
+    // Por ahora retornamos las unidades de ejemplo, pero esto debería conectarse
+    // con la información real de la pestaña de flota
+    return [
+        { 
+            nombre: "DODGE (D600) ROJO", 
+            codigo: "3S04", 
+            capacidadVolumen: 51, 
+            capacidadPeso: 11000,
+            estado: "Disponible"
+        },
+        { 
+            nombre: "DINA (600) AMARILLO", 
+            codigo: "3S01", 
+            capacidadVolumen: 70, 
+            capacidadPeso: 8000,
+            estado: "Disponible"
+        }
+    ].filter(u => u.estado === "Disponible");
+}
+
+function buscarBloques() {
+    const busqueda = document.getElementById('busquedaBloque').value.toLowerCase();
+    const resultados = document.getElementById('resultadosBusqueda');
+    
+    // Si no hay término de búsqueda, limpiamos los resultados
+    if (!busqueda) {
+        resultados.innerHTML = '<div class="alert alert-info">Ingresa el nombre del bloque o algún detalle para buscarlo.</div>';
+        return;
+    }
+    
+    // Filtrar los bloques
+    const bloquesFiltrados = bloquesFacturas.filter(bloque => {
+        const nombre = (bloque.nombre || '').toLowerCase();
+        const datos = bloque.datos || [];
+        const contenidoMatch = datos.some(item => 
+            (item.Descripción || '').toLowerCase().includes(busqueda) ||
+            (item.Código || '').toLowerCase().includes(busqueda)
+        );
+        return nombre.includes(busqueda) || contenidoMatch;
+    });
+    
+    // Mostrar resultados
+    if (bloquesFiltrados.length === 0) {
+        resultados.innerHTML = '<div class="alert alert-warning">No se encontraron bloques que coincidan con la búsqueda.</div>';
+        return;
+    }
+    
+    // Generar HTML para los resultados
+    resultados.innerHTML = bloquesFiltrados.map((bloque, idx) => {
+        const bloqueIndex = bloquesFacturas.indexOf(bloque);
+        return `
+            <div class="card mb-2">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h6 class="mb-0">${bloque.nombre || 'Sin nombre'}</h6>
+                        <div>
+                            <button class="btn btn-primary me-2" onclick="seleccionarBloque(${bloqueIndex})">
+                                Seleccionar Bloque
+                            </button>
+                            <button class="btn btn-info" onclick="mostrarDetalles(${bloqueIndex})">
+                                Ver detalles
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+
+    // Mostrar los resultados
+    if (bloquesFiltrados.length === 0) {
+        resultados.innerHTML = '<div class="alert alert-info">No se encontraron bloques que coincidan con la búsqueda.</div>';
+        return;
+    }
+
+    // Generar HTML para los resultados
+    resultados.innerHTML = bloquesFiltrados.map((bloque, idx) => `
+        <div class="card mb-3 rounded">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h6 class="mb-0">${bloque.nombre || 'Sin nombre'}</h6>
+                    <div>
+                        <button class="btn btn-primary me-2" onclick="seleccionarBloque(${idx})">
+                            Seleccionar Bloque
+                        </button>
+                        <button class="btn btn-info" onclick="mostrarDetalles(${idx})">
+                            Ver detalles
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div id="detalles_${idx}" class="card-body border-top" style="display: none;">
+                <table class="table table-sm">
+                    <thead>
+                        <tr>
+                            <th>Cantidad</th>
+                            <th>Código</th>
+                            <th>Descripción</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${bloque.datos.map(f => `
+                            <tr>
+                                <td>${f.Cantidad || ''}</td>
+                                <td>${f.Código || ''}</td>
+                                <td>${f.Descripción || ''}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    `).join('');
+}
+
 // Eliminar bloque de la página y de la hoja de cálculo
 // filepath: c:\Users\mg296\OneDrive\Escritorio\cubicaja\Proyecto_de_residencia_profesional.html
 // ...existing code...
