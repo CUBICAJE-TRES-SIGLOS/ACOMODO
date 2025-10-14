@@ -513,6 +513,7 @@ document.addEventListener('DOMContentLoaded', function() {
     <button class="tablink" data-tab="flota">Flota</button>
     <button class="tablink" data-tab="facturas">Escaneo de traspasos o facturas</button> 
     <button class="tablink" data-tab="pedidos">Pedidos</button>
+    <button class="tablink" data-tab="sugerencia-unidad">Sugerencia de Unidad</button>
     <button class="tablink" data-tab="pedidos-confirmados">Pedidos Confirmados</button>
    
 </nav>
@@ -786,6 +787,68 @@ document.addEventListener('DOMContentLoaded', function() {
             </thead>
             <tbody></tbody>
         </table>
+    </div>
+
+    <!-- Sugerencia de Unidad -->
+    <div id="sugerencia-unidad" class="tabcontent" style="max-width: 1000px;">
+        <h3>Sugerencia de Unidad</h3>
+        <div class="card mb-3">
+            <div class="card-header">
+                <h5>Agregar Llantas al Cálculo</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3">
+                        <label>Cantidad</label>
+                        <input type="number" id="sugestionCantidad" class="form-control" value="1" min="1">
+                    </div>
+                    <div class="col-md-3">
+                        <label>Tipo de Llanta</label>
+                        <select class="form-control" id="sugestionTipoLlanta">
+                            <option value="AUTO">Auto pequeño/compacto</option>
+                            <option value="SUV_CAMIONETA">Camioneta / SUV</option>
+                            <option value="COMERCIAL_LIGERO">Comerciales ligeros</option>
+                            <option value="PESADO">Camiones pesados</option>
+                            <option value="AGRICOLA_MINERO">Agrícolas / especiales</option>
+                            <option value="CAMARAS">Cámaras y otros</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3 d-flex align-items-end">
+                        <button class="btn btn-primary" onclick="agregarTipoLlanta()">
+                            <i class="bi bi-plus-circle"></i> Agregar
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card mb-3">
+            <div class="card-header">
+                <h5>Llantas Agregadas</h5>
+            </div>
+            <div class="card-body">
+                <table class="table" id="tablaLlantasAgregadas">
+                    <thead>
+                        <tr>
+                            <th>Tipo de Llanta</th>
+                            <th>Cantidad</th>
+                            <th>Volumen Total</th>
+                            <th>Peso Total</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+                <div id="totalLlantas" style="font-weight: bold; margin-top: 10px;"></div>
+            </div>
+        </div>
+
+        <div id="resultadoSugerencia" class="card d-none">
+            <div class="card-body">
+                <h5 class="card-title">Unidad Sugerida</h5>
+                <div id="unidadSugeridaDetalles"></div>
+            </div>
+        </div>
     </div>
 
     <!-- Pedidos Confirmados -->
@@ -2116,6 +2179,422 @@ function searchInventario() {
         }, 0);
         return String(maxEco + 1);
     }
+    // Función para manejar el debounce de actualización
+    let timeoutId = null;
+    function actualizarSugerenciaUnidad() {
+        // Cancelar el timeout anterior si existe
+        if (timeoutId) {
+            clearTimeout(timeoutId);
+        }
+        
+        // Establecer un nuevo timeout
+        timeoutId = setTimeout(() => {
+            calcularSugerenciaUnidad();
+        }, 300); // Esperar 300ms después de la última entrada
+    }
+
+    // Definir promedios según el tipo de llanta
+    const PROMEDIOS_LLANTAS = {
+        'AUTO': { volumen: 0.047, peso: 7},
+        'SUV_CAMIONETA': { volumen: 0.060, peso: 12.5 },
+        'COMERCIAL_LIGERO': { volumen: 0.120, peso: 25 },
+        'PESADO': { volumen: 0.280, peso: 50 },
+        'AGRICOLA_MINERO': { volumen: 0.150, peso: 80 },
+        'CAMARAS': { volumen: 0.010, peso: 2 }
+    };
+
+    // Array para almacenar las llantas agregadas
+    let llantasAgregadas = [];
+
+    // Función para agregar un tipo de llanta a la lista
+    function agregarTipoLlanta() {
+        const cantidad = parseInt(document.getElementById('sugestionCantidad').value) || 0;
+        const tipoLlanta = document.getElementById('sugestionTipoLlanta');
+        const tipoSeleccionado = tipoLlanta.value;
+        const tipoTexto = tipoLlanta.options[tipoLlanta.selectedIndex].text;
+
+        if (cantidad <= 0) {
+            alert('Por favor ingrese una cantidad válida');
+            return;
+        }
+
+        // Calcular el volumen y peso de las llantas
+        const volumen = cantidad * PROMEDIOS_LLANTAS[tipoSeleccionado].volumen;
+        const peso = cantidad * PROMEDIOS_LLANTAS[tipoSeleccionado].peso;
+
+        // Crear objeto de llanta
+        const llanta = {
+            tipo: tipoSeleccionado,
+            tipoTexto: tipoTexto,
+            cantidad: cantidad,
+            volumen: volumen,
+            peso: peso
+        };
+
+        // Agregar la llanta y actualizar la interfaz
+        llantasAgregadas.push(llanta);
+        actualizarTablaLlantas();
+        
+        // Forzar la actualización de la sugerencia
+        setTimeout(() => {
+            calcularSugerenciaUnidad();
+            document.getElementById('resultadoSugerencia').classList.remove('d-none');
+        }, 100);
+
+        // Limpiar campos
+        document.getElementById('sugestionCantidad').value = '1';
+    }
+
+    // Función para eliminar un tipo de llanta
+    function eliminarTipoLlanta(index) {
+        llantasAgregadas.splice(index, 1);
+        actualizarTablaLlantas();
+        calcularSugerenciaUnidad();
+    }
+
+    // Función para actualizar la tabla de llantas
+    function actualizarTablaLlantas() {
+        console.log('Actualizando tabla de llantas...');
+        
+        const tbody = document.querySelector('#tablaLlantasAgregadas tbody');
+        const totalDiv = document.getElementById('totalLlantas');
+        const resultadoDiv = document.getElementById('resultadoSugerencia');
+        
+        let volumenTotal = 0;
+        let pesoTotal = 0;
+        
+        tbody.innerHTML = '';
+        
+        // Asegurar que el contenedor de resultado esté visible
+        if (resultadoDiv) {
+            resultadoDiv.style.display = 'block';
+        }
+        
+        llantasAgregadas.forEach((llanta, index) => {
+            volumenTotal += llanta.volumen;
+            pesoTotal += llanta.peso;
+            
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${llanta.tipoTexto}</td>
+                <td>${llanta.cantidad}</td>
+                <td>${llanta.volumen.toFixed(2)} m³</td>
+                <td>${llanta.peso.toFixed(2)} kg</td>
+                <td>
+                    <button class="btn btn-danger btn-sm" onclick="eliminarTipoLlanta(${index})">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+
+        totalDiv.innerHTML = `
+            Total: ${llantasAgregadas.reduce((sum, l) => sum + l.cantidad, 0)} llantas | 
+            Volumen: ${volumenTotal.toFixed(2)} m³ | 
+            Peso: ${pesoTotal.toFixed(2)} kg
+        `;
+    }
+
+    // Función para calcular la sugerencia de unidad
+    async function calcularSugerenciaUnidad() {
+        console.log('Iniciando cálculo de sugerencia...');
+        
+        // Inicializar elementos UI
+        const contenedorResultado = document.getElementById('resultadoSugerencia');
+        const contenedorDetalles = document.getElementById('unidadSugeridaDetalles');
+
+        if (!contenedorResultado || !contenedorDetalles) {
+            console.error('No se encontraron los contenedores de resultado');
+            return;
+        }
+
+        // Asegurarnos de que el contenedor de resultado esté visible
+        contenedorResultado.classList.remove('d-none');
+        contenedorDetalles.innerHTML = '<div class="alert alert-info">Calculando sugerencias...</div>';
+
+        if (llantasAgregadas.length === 0) {
+            contenedorDetalles.innerHTML = `
+                <div class="alert alert-info">
+                    <h6><i class="bi bi-info-circle"></i> Agregue llantas para ver sugerencias de unidades</h6>
+                    <p>Use el formulario superior para agregar llantas al cálculo.</p>
+                </div>`;
+            return;
+        }
+
+        // Calcular totales de todas las llantas agregadas
+        const volumenTotal = llantasAgregadas.reduce((sum, llanta) => sum + llanta.volumen, 0);
+        const pesoTotal = llantasAgregadas.reduce((sum, llanta) => sum + llanta.peso, 0);
+
+        // Variables para el cálculo
+        let camionSugerido = null;
+        let porcentajeUtilizacionOptimo = 0;
+        let camionesViables = [];
+
+        // Filtrar y procesar todos los camiones disponibles
+        camionesViables = flota
+            .filter(camion => {
+                try {
+                    // Verificar que el camión tenga datos válidos
+                    if (!camion.volumen || !camion["capacidad de carga (kg)"]) {
+                        console.log('Camión sin datos completos:', camion);
+                        return false;
+                    }
+                    
+                    // Convertir a números y validar
+                    const volumenCamion = parseFloat(camion.volumen);
+                    const capacidadCarga = parseFloat(camion["capacidad de carga (kg)"]);
+                    
+                    // Verificar que los valores sean válidos
+                    if (isNaN(volumenCamion) || isNaN(capacidadCarga) || 
+                        volumenCamion <= 0 || capacidadCarga <= 0) {
+                        console.log('Camión con datos inválidos:', camion);
+                        return false;
+                    }
+                    
+                    // Calcular porcentajes de uso
+                    const porcentajeVolumen = (volumenTotal / volumenCamion) * 100;
+                    const porcentajePeso = (pesoTotal / capacidadCarga) * 100;
+                    
+                    // Guardar los valores numéricos en el objeto
+                    camion.volumenNum = volumenCamion;
+                    camion.capacidadCargaNum = capacidadCarga;
+                    
+                    // El camión es viable si puede llevar la carga
+                    const esViable = porcentajeVolumen <= 100 && porcentajePeso <= 100;
+                    
+                    if (esViable) {
+                        console.log('Camión viable encontrado:', camion.economico);
+                    }
+                    
+                    return esViable;
+                } catch (error) {
+                    console.error('Error al procesar camión:', camion, error);
+                    return false;
+                }
+            })
+            .map(camion => {
+                // Usar los valores numéricos ya convertidos
+                const porcentajeVolumen = (volumenTotal / camion.volumenNum) * 100;
+                const porcentajePeso = (pesoTotal / camion.capacidadCargaNum) * 100;
+                const utilizacionPromedio = (porcentajeVolumen + porcentajePeso) / 2;
+                
+                return {
+                    ...camion,
+                    porcentajeVolumen,
+                    porcentajePeso,
+                    utilizacionPromedio
+                };
+            });
+
+        // Encontrar el camión óptimo
+        if (camionesViables.length > 0) {
+            camionSugerido = camionesViables.reduce((mejor, actual) => 
+                actual.utilizacionPromedio > mejor.utilizacionPromedio ? actual : mejor
+            , camionesViables[0]);
+            
+            porcentajeUtilizacionOptimo = camionSugerido.utilizacionPromedio;
+        }
+
+        // Ordenar camiones viables por utilización
+        camionesViables.sort((a, b) => b.utilizacionPromedio - a.utilizacionPromedio);
+
+        // Preparar la visualización de resultados
+        console.log('Camiones viables encontrados:', camionesViables.length);
+        console.log('Volumen total:', volumenTotal, 'm³');
+        console.log('Peso total:', pesoTotal, 'kg');
+
+        if (camionesViables.length > 0) {
+            let html = `
+                <div class="alert alert-primary mb-3">
+                    <h6>Resumen de Carga:</h6>
+                    <ul>
+                        ${llantasAgregadas.map(llanta => 
+                            `<li>${llanta.cantidad} llantas tipo ${llanta.tipoTexto}</li>`
+                        ).join('')}
+                        <li><strong>Volumen total de carga:</strong> ${volumenTotal.toFixed(2)} m³</li>
+                        <li><strong>Peso total de carga:</strong> ${pesoTotal.toFixed(2)} kg</li>
+                    </ul>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead class="table-primary">
+                            <tr>
+                                <th>Unidad</th>
+                                <th>Económico</th>
+                                <th>Capacidad Volumen</th>
+                                <th>Capacidad Peso</th>
+                                <th>Uso Volumen</th>
+                                <th>Uso Peso</th>
+                                <th>Eficiencia</th>
+                            </tr>
+                        </thead>
+                        <tbody>`;
+
+            // Ordenar camiones por eficiencia (del más eficiente al menos eficiente)
+            camionesViables.sort((a, b) => b.utilizacionPromedio - a.utilizacionPromedio);
+
+            // Agregar clase para resaltar el mejor camión
+            camionesViables.forEach((camion, index) => {
+                const rowClass = index === 0 ? 'table-success' : '';
+                html += `
+                    <tr class="${rowClass}">
+                        <td>${camion.unidad || 'Sin nombre'}</td>
+                        <td>${camion.economico}</td>
+                        <td>${parseFloat(camion.volumen).toFixed(2)} m³</td>
+                        <td>${parseFloat(camion["capacidad de carga (kg)"]).toFixed(0)} kg</td>
+                        <td>
+                            <div class="progress" style="height: 20px;">
+                                <div class="progress-bar bg-info" 
+                                     role="progressbar" 
+                                     style="width: ${camion.porcentajeVolumen}%;"
+                                     title="${camion.porcentajeVolumen.toFixed(1)}%">
+                                    ${camion.porcentajeVolumen.toFixed(1)}%
+                                </div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="progress" style="height: 20px;">
+                                <div class="progress-bar bg-warning" 
+                                     role="progressbar" 
+                                     style="width: ${camion.porcentajePeso}%;"
+                                     title="${camion.porcentajePeso.toFixed(1)}%">
+                                    ${camion.porcentajePeso.toFixed(1)}%
+                                </div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="progress" style="height: 20px;">
+                                <div class="progress-bar bg-success" 
+                                     role="progressbar" 
+                                     style="width: ${camion.utilizacionPromedio}%;"
+                                     title="${camion.utilizacionPromedio.toFixed(1)}%">
+                                    ${camion.utilizacionPromedio.toFixed(1)}%
+                                </div>
+                            </div>
+                        </td>
+                    </tr>`;
+            });
+
+            html += `
+                        </tbody>
+                    </table>
+                </div>
+                
+                <div class="alert alert-info mt-3">
+                    <h6><i class="bi bi-info-circle"></i> Información:</h6>
+                    <ul>
+                        <li>La fila resaltada en verde indica la unidad más eficiente</li>
+                        <li>La eficiencia se calcula considerando el uso balanceado de volumen y peso</li>
+                        <li>Todas las unidades mostradas pueden transportar la carga de forma segura</li>
+                    </ul>
+                </div>`;
+
+            // Actualizar el contenido
+            contenedorDetalles.innerHTML = html;
+
+            // Si hay más opciones viables, mostrarlas
+            if (camionesViables.length > 1) {
+                html += `
+                    <div class="alert alert-info mt-3">
+                        <h6>Otras opciones disponibles:</h6>
+                        <div class="table-responsive">
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>Unidad</th>
+                                        <th>Utilización</th>
+                                        <th>Volumen</th>
+                                        <th>Peso</th>
+                                    </tr>
+                                </thead>
+                                <tbody>`;
+                
+                // Mostrar hasta 3 opciones alternativas
+                camionesViables.slice(1, 4).forEach(camion => {
+                    html += `
+                        <tr>
+                            <td>${camion.unidad || camion.economico}</td>
+                            <td>${camion.utilizacionPromedio.toFixed(1)}%</td>
+                            <td>${camion.porcentajeVolumen.toFixed(1)}%</td>
+                            <td>${camion.porcentajePeso.toFixed(1)}%</td>
+                        </tr>`;
+                });
+
+                html += `
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>`;
+            }
+
+            detallesDiv.innerHTML = html;
+        } else {
+            contenedorDetalles.innerHTML = `
+                <div class="alert alert-warning">
+                    <h6><i class="bi bi-exclamation-triangle"></i> No se encontró un camión adecuado para la carga especificada.</h6>
+                    
+                    <div class="card mt-3">
+                        <div class="card-header bg-warning">
+                            <h6 class="mb-0">Detalles de la Carga</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <h6>Llantas:</h6>
+                                    <ul>
+                                        ${llantasAgregadas.map(llanta => 
+                                            `<li>${llanta.cantidad} llantas tipo ${llanta.tipoTexto}</li>`
+                                        ).join('')}
+                                    </ul>
+                                </div>
+                                <div class="col-md-6">
+                                    <h6>Totales:</h6>
+                                    <ul>
+                                        <li><strong>Volumen requerido:</strong> ${volumenTotal.toFixed(2)} m³</li>
+                                        <li><strong>Peso requerido:</strong> ${pesoTotal.toFixed(2)} kg</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card mt-3">
+                        <div class="card-header bg-info text-white">
+                            <h6 class="mb-0">Análisis y Sugerencias</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table table-sm">
+                                    <thead>
+                                        <tr>
+                                            <th>Problema</th>
+                                            <th>Sugerencia</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td>Exceso de volumen o peso</td>
+                                            <td>Dividir la carga en múltiples unidades más pequeñas</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Capacidad insuficiente</td>
+                                            <td>Verificar disponibilidad de unidades más grandes</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Datos incorrectos</td>
+                                            <td>Revisar si las cantidades ingresadas son correctas</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>`;
+        }
+    }
+
     function limpiarFormularioFlota() {
         document.getElementById('agregarEconomico').value = '';
         document.getElementById('agregarUnidad').value = '';
