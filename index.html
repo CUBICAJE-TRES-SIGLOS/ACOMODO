@@ -5,6 +5,7 @@
     <meta charset="UTF-8" />
     <title>Sistema de cubicaje - Comercializadora de Llantas Tres Siglos</title>
     <link rel="icon" type="image/png" href="https://http2.mlstatic.com/storage/mshops-appearance-api/images/13/1184895213/logo-2022082314215812800.png">
+    <script src="js/distribucionOptima.js"></script>
     <style>
     /* --- Tus estilos existentes --- */
 
@@ -2422,6 +2423,55 @@ function searchInventario() {
         const contenedorResultado = document.getElementById('resultadoSugerencia');
         const contenedorDetalles = document.getElementById('unidadSugeridaDetalles');
 
+        // Función auxiliar para distribuir carga
+        function distribuirCargaEnCamiones(volumenTotal, pesoTotal, camionesDisponibles) {
+            if (!Array.isArray(camionesDisponibles)) {
+                console.error('camionesDisponibles no es un array:', camionesDisponibles);
+                return { distribucion: [], volumenRestante: volumenTotal, pesoRestante: pesoTotal };
+            }
+            let distribucion = [];
+            let volumenRestante = volumenTotal;
+            let pesoRestante = pesoTotal;
+            let camionesOrdenados = [...camionesDisponibles].sort((a, b) => 
+                (b.volumenNum + b.capacidadCargaNum) - (a.volumenNum + a.capacidadCargaNum)
+            );
+            
+            while (volumenRestante > 0 || pesoRestante > 0) {
+                let mejorCamion = null;
+                let mejorEficiencia = 0;
+                
+                for (const camion of camionesOrdenados) {
+                    const volumenPosible = Math.min(volumenRestante, camion.volumenNum);
+                    const pesoPosible = Math.min(pesoRestante, camion.capacidadCargaNum);
+                    const eficienciaVolumen = volumenPosible / camion.volumenNum;
+                    const eficienciaPeso = pesoPosible / camion.capacidadCargaNum;
+                    const eficienciaPromedio = (eficienciaVolumen + eficienciaPeso) / 2;
+                    
+                    if (eficienciaPromedio > mejorEficiencia) {
+                        mejorEficiencia = eficienciaPromedio;
+                        mejorCamion = {
+                            ...camion,
+                            volumenAsignado: volumenPosible,
+                            pesoAsignado: pesoPosible,
+                            eficiencia: eficienciaPromedio * 100
+                        };
+                    }
+                }
+                
+                if (!mejorCamion) break;
+                
+                distribucion.push(mejorCamion);
+                volumenRestante -= mejorCamion.volumenAsignado;
+                pesoRestante -= mejorCamion.pesoAsignado;
+            }
+            
+            return {
+                distribucion,
+                volumenRestante,
+                pesoRestante
+            };
+        }
+
         if (!contenedorResultado || !contenedorDetalles) {
             console.error('No se encontraron los contenedores de resultado');
             return;
@@ -2443,14 +2493,10 @@ function searchInventario() {
         // Calcular totales de todas las llantas agregadas
         const volumenTotal = llantasAgregadas.reduce((sum, llanta) => sum + llanta.volumen, 0);
         const pesoTotal = llantasAgregadas.reduce((sum, llanta) => sum + llanta.peso, 0);
+        const cantidadTotalLlantas = llantasAgregadas.reduce((sum, llanta) => sum + llanta.cantidad, 0);
 
-        // Variables para el cálculo
-        let camionSugerido = null;
-        let porcentajeUtilizacionOptimo = 0;
-        let camionesViables = [];
-
-        // Filtrar y procesar todos los camiones disponibles
-        camionesViables = flota
+        // Procesar todos los camiones disponibles
+        let camionesDisponibles = flota
             .filter(camion => {
                 try {
                     // Verificar que el camión tenga datos válidos
@@ -2505,35 +2551,84 @@ function searchInventario() {
                 };
             });
 
-        // Encontrar el camión óptimo
-        if (camionesViables.length > 0) {
-            camionSugerido = camionesViables.reduce((mejor, actual) => 
-                actual.utilizacionPromedio > mejor.utilizacionPromedio ? actual : mejor
-            , camionesViables[0]);
-            
-            porcentajeUtilizacionOptimo = camionSugerido.utilizacionPromedio;
+        // Calcular la distribución óptima de camiones
+        const distribucion = distribuirCargaEnCamiones(volumenTotal, pesoTotal, camionesDisponibles);
+
+        if (distribucion.distribucion.length === 0) {
+            contenedorDetalles.innerHTML = `
+                <div class="alert alert-warning">
+                    <h5><i class="bi bi-exclamation-triangle"></i> No hay suficientes unidades disponibles</h5>
+                    <p>La carga total es demasiado grande para las unidades disponibles:</p>
+                    <ul>
+                        <li>Volumen total: ${volumenTotal.toFixed(2)} m³</li>
+                        <li>Peso total: ${pesoTotal.toFixed(2)} kg</li>
+                        <li>Cantidad de llantas: ${cantidadTotalLlantas}</li>
+                    </ul>
+                </div>
+            `;
+            return;
         }
 
-        // Ordenar camiones viables por utilización
-        camionesViables.sort((a, b) => b.utilizacionPromedio - a.utilizacionPromedio);
-
         // Preparar la visualización de resultados
-        console.log('Camiones viables encontrados:', camionesViables.length);
+        console.log('Camiones en distribución:', distribucion.distribucion.length);
         console.log('Volumen total:', volumenTotal, 'm³');
         console.log('Peso total:', pesoTotal, 'kg');
 
-        if (camionesViables.length > 0) {
-            let html = `
-                <div class="alert alert-primary mb-3">
-                    <h6>Resumen de Carga:</h6>
-                    <ul>
-                        ${llantasAgregadas.map(llanta => 
-                            `<li>${llanta.cantidad} llantas tipo ${llanta.tipoTexto}</li>`
-                        ).join('')}
-                        <li><strong>Volumen total de carga:</strong> ${volumenTotal.toFixed(2)} m³</li>
-                        <li><strong>Peso total de carga:</strong> ${pesoTotal.toFixed(2)} kg</li>
-                    </ul>
-                </div>
+        let html = `
+            <div class="alert alert-primary mb-3">
+                <h5>Resumen de Carga Total:</h5>
+                <ul>
+                    ${llantasAgregadas.map(llanta => 
+                        `<li>${llanta.cantidad} llantas tipo ${llanta.tipoTexto}</li>`
+                    ).join('')}
+                    <li><strong>Volumen total de carga:</strong> ${volumenTotal.toFixed(2)} m³</li>
+                    <li><strong>Peso total de carga:</strong> ${pesoTotal.toFixed(2)} kg</li>
+                    <li><strong>Total de llantas:</strong> ${cantidadTotalLlantas}</li>
+                </ul>
+            </div>
+
+            <div class="alert alert-success mb-3">
+                <h5><i class="bi bi-truck"></i> Distribución Sugerida (${distribucion.distribucion.length} unidades):</h5>
+            </div>
+
+            <div class="row">
+                ${distribucion.distribucion.map((camion, index) => `
+                    <div class="col-md-6 mb-3">
+                        <div class="card">
+                            <div class="card-header bg-info text-white">
+                                <h6 class="mb-0">Unidad ${index + 1}: ${camion.unidad} (Eco. ${camion.economico})</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="mb-2">
+                                    <strong>Volumen asignado:</strong>
+                                    <div class="progress mb-1" style="height: 20px;">
+                                        <div class="progress-bar bg-primary" 
+                                             role="progressbar" 
+                                             style="width: ${(camion.volumenAsignado/camion.volumenNum*100).toFixed(1)}%;">
+                                            ${(camion.volumenAsignado/camion.volumenNum*100).toFixed(1)}%
+                                        </div>
+                                    </div>
+                                    <small>${camion.volumenAsignado.toFixed(2)} m³ de ${camion.volumenNum.toFixed(2)} m³</small>
+                                </div>
+                                <div>
+                                    <strong>Peso asignado:</strong>
+                                    <div class="progress mb-1" style="height: 20px;">
+                                        <div class="progress-bar bg-warning" 
+                                             role="progressbar" 
+                                             style="width: ${(camion.pesoAsignado/camion.capacidadCargaNum*100).toFixed(1)}%;">
+                                            ${(camion.pesoAsignado/camion.capacidadCargaNum*100).toFixed(1)}%
+                                        </div>
+                                    </div>
+                                    <small>${camion.pesoAsignado.toFixed(2)} kg de ${camion.capacidadCargaNum.toFixed(2)} kg</small>
+                                </div>
+                            </div>
+                            <div class="card-footer">
+                                <strong>Eficiencia de uso:</strong> ${camion.eficiencia.toFixed(1)}%
+                            </div>
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
 
                 <div class="table-responsive">
                     <table class="table table-hover">
@@ -2551,7 +2646,7 @@ function searchInventario() {
                         <tbody>`;
 
             // Ordenar camiones por eficiencia (del más eficiente al menos eficiente)
-            camionesViables.sort((a, b) => b.utilizacionPromedio - a.utilizacionPromedio);
+            const camionesViables = camionesDisponibles.sort((a, b) => b.utilizacionPromedio - a.utilizacionPromedio);
 
             // Agregar clase para resaltar el mejor camión
             camionesViables.forEach((camion, index) => {
@@ -2613,30 +2708,30 @@ function searchInventario() {
             contenedorDetalles.innerHTML = html;
 
             // Si hay más opciones viables, mostrarlas
-            if (camionesViables.length > 1) {
+            if (distribucion.distribucion.length > 1) {
                 html += `
                     <div class="alert alert-info mt-3">
-                        <h6>Otras opciones disponibles:</h6>
+                        <h6>Resumen de distribución:</h6>
                         <div class="table-responsive">
                             <table class="table table-sm">
                                 <thead>
                                     <tr>
                                         <th>Unidad</th>
-                                        <th>Utilización</th>
+                                        <th>Eficiencia</th>
                                         <th>Volumen</th>
                                         <th>Peso</th>
                                     </tr>
                                 </thead>
                                 <tbody>`;
                 
-                // Mostrar hasta 3 opciones alternativas
-                camionesViables.slice(1, 4).forEach(camion => {
+                // Mostrar resumen de todas las unidades asignadas
+                distribucion.distribucion.forEach(camion => {
                     html += `
                         <tr>
                             <td>${camion.unidad || camion.economico}</td>
-                            <td>${camion.utilizacionPromedio.toFixed(1)}%</td>
-                            <td>${camion.porcentajeVolumen.toFixed(1)}%</td>
-                            <td>${camion.porcentajePeso.toFixed(1)}%</td>
+                            <td>${camion.eficiencia.toFixed(1)}%</td>
+                            <td>${(camion.volumenAsignado/camion.volumenNum*100).toFixed(1)}%</td>
+                            <td>${(camion.pesoAsignado/camion.capacidadCargaNum*100).toFixed(1)}%</td>
                         </tr>`;
                 });
 
@@ -2648,7 +2743,7 @@ function searchInventario() {
             }
 
             detallesDiv.innerHTML = html;
-        } else {
+        
             contenedorDetalles.innerHTML = `
                 <div class="alert alert-warning">
                     <h6><i class="bi bi-exclamation-triangle"></i> No se encontró un camión adecuado para la carga especificada.</h6>
@@ -2711,7 +2806,7 @@ function searchInventario() {
                     </div>
                 </div>`;
         }
-    }
+    
 
     function limpiarFormularioFlota() {
         document.getElementById('agregarEconomico').value = '';
@@ -5515,22 +5610,8 @@ function seleccionarBloque(idx) {
     const resultadoDiv = document.getElementById('resultadoSugerencia');
     resultadoDiv.classList.remove('d-none');
     
-    const unidades = [
-        { 
-            nombre: "DODGE (D600) ROJO", 
-            codigo: "3S04", 
-            capacidadVolumen: 51, 
-            capacidadPeso: 11000,
-            color: "danger"
-        },
-        { 
-            nombre: "DINA (600) AMARILLO", 
-            codigo: "3S01", 
-            capacidadVolumen: 70, 
-            capacidadPeso: 8000,
-            color: "warning"
-        }
-    ];
+    // Obtener las unidades disponibles de la flota
+    const unidades = obtenerUnidadesFlota();
     
     // Encontrar la unidad más eficiente
     const unidadesValidas = unidades.filter(u => 
@@ -5562,48 +5643,96 @@ function seleccionarBloque(idx) {
         (totalPeso/mejorUnidad.capacidadPeso * 100)
     ).toFixed(1);
     
-    detallesDiv.innerHTML = `
-        <div class="table-responsive">
-            <table class="table table-bordered">
-                <thead class="table-light">
-                    <tr>
-                        <th>Unidad</th>
-                        <th>Económico</th>
-                        <th>Cap. Volumen</th>
-                        <th>Cap. Peso</th>
-                        <th>Uso Volumen</th>
-                        <th>Uso Peso</th>
-                        <th>Eficiencia</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <td>${mejorUnidad.nombre}</td>
-                        <td>${mejorUnidad.codigo}</td>
-                        <td>${mejorUnidad.capacidadVolumen} m³</td>
-                        <td>${mejorUnidad.capacidadPeso} kg</td>
-                        <td>
-                            <div class="progress">
-                                <div class="progress-bar bg-primary" 
-                                     role="progressbar" 
-                                     style="width: ${usoVolumen}%" 
-                                     aria-valuenow="${usoVolumen}" 
-                                     aria-valuemin="0" 
-                                     aria-valuemax="100">
-                                    ${usoVolumen}%
-                                </div>
+    const distribucion = calcularDistribucionOptima(totalVolumen, totalPeso, unidades);
+    
+    if (!distribucion) {
+        detallesDiv.innerHTML = `
+            <div class="alert alert-warning">
+                <i class="bi bi-exclamation-triangle"></i>
+                No se encontró una distribución adecuada para esta carga.
+            </div>
+        `;
+        return;
+    }
+
+    let htmlUnidades = '';
+    distribucion.unidades.forEach((info, index) => {
+        const usoVolumen = (info.volumen/info.unidad.capacidadVolumen * 100).toFixed(1);
+        const usoPeso = (info.peso/info.unidad.capacidadPeso * 100).toFixed(1);
+        
+        htmlUnidades += `
+            <div class="card mb-3">
+                <div class="card-header bg-${index === 0 ? 'primary' : 'success'} text-white">
+                    <h5 class="mb-0">
+                        ${index === 0 ? 'Unidad Principal' : 'Unidad Auxiliar'}
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <table class="table table-bordered">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Unidad</th>
+                                <th>Económico</th>
+                                <th>Capacidad</th>
+                                <th>Carga Asignada</th>
+                                <th>Uso</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>${info.unidad.nombre}</td>
+                                <td>${info.unidad.codigo}</td>
+                                <td>
+                                    <div>Volumen: ${info.unidad.capacidadVolumen} m³</div>
+                                    <div>Peso: ${info.unidad.capacidadPeso} kg</div>
+                                </td>
+                                <td>
+                                    <div>Volumen: ${info.volumen.toFixed(2)} m³</div>
+                                    <div>Peso: ${info.peso.toFixed(2)} kg</div>
+                                </td>
+                                <td>
+                                    <div class="progress mb-2">
+                                        <div class="progress-bar bg-primary" 
+                                             role="progressbar" 
+                                             style="width: ${usoVolumen}%" 
+                                             title="Uso de volumen: ${usoVolumen}%">
+                                            Vol: ${usoVolumen}%
+                                        </div>
+                                    </div>
+                                    <div class="progress">
+                                        <div class="progress-bar bg-warning" 
+                                             role="progressbar" 
+                                             style="width: ${usoPeso}%" 
+                                             title="Uso de peso: ${usoPeso}%">
+                                            Peso: ${usoPeso}%
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    <div class="mt-2">
+                        <strong>Eficiencia de la unidad:</strong>
+                        <div class="progress">
+                            <div class="progress-bar bg-success" 
+                                 role="progressbar" 
+                                 style="width: ${info.eficiencia}%" 
+                                 title="Eficiencia: ${info.eficiencia.toFixed(1)}%">
+                                ${info.eficiencia.toFixed(1)}%
                             </div>
-                        </td>
-                        <td>
-                            <div class="progress">
-                                <div class="progress-bar bg-warning" 
-                                     role="progressbar" 
-                                     style="width: ${usoPeso}%" 
-                                     aria-valuenow="${usoPeso}" 
-                                     aria-valuemin="0" 
-                                     aria-valuemax="100">
-                                    ${usoPeso}%
-                                </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    });
+
+    detallesDiv.innerHTML = `
+        <div class="alert alert-info mb-3">
+            <strong>Distribución óptima encontrada</strong><br>
+            Eficiencia global: ${distribucion.eficienciaTotal.toFixed(1)}%
+        </div>
+        ${htmlUnidades}
                             </div>
                         </td>
                         <td>
