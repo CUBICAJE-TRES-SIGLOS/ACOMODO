@@ -5354,9 +5354,24 @@ function seleccionarBloque(idx) {
     const llantas = bloque.datos.map(item => {
         const cantidad = parseInt(item.Cantidad) || 0;
         totalLlantas += cantidad;
-        const medidas = obtenerMedidasPorTipo(determinarTipoLlanta(item.Descripción));
-        const volumenTotal = medidas.volumen * cantidad;
-        const pesoTotal = medidas.peso * cantidad;
+        
+        // Buscar la llanta en el inventario para obtener valores reales
+        const llantaInventario = inventario.find(l => l.clave === item.Código);
+        let volumenUnitario = 0;
+        let pesoUnitario = 0;
+        
+        if (llantaInventario) {
+            volumenUnitario = parseFloat(llantaInventario.volumen) || 0;
+            pesoUnitario = parseFloat(llantaInventario.peso) || 0;
+        } else {
+            // Si no se encuentra en inventario, usar medidas estimadas
+            const medidas = obtenerMedidasPorTipo(determinarTipoLlanta(item.Descripción));
+            volumenUnitario = medidas.volumen;
+            pesoUnitario = medidas.peso;
+        }
+        
+        const volumenTotal = volumenUnitario * cantidad;
+        const pesoTotal = pesoUnitario * cantidad;
         
         volumenTotalBloque += volumenTotal;
         pesoTotalBloque += pesoTotal;
@@ -5365,6 +5380,8 @@ function seleccionarBloque(idx) {
             descripcion: item.Descripción,
             cantidad: cantidad,
             codigo: item.Código,
+            volumenUnitario: volumenUnitario,
+            pesoUnitario: pesoUnitario,
             volumenTotal: volumenTotal,
             pesoTotal: pesoTotal
         };
@@ -5379,10 +5396,19 @@ function seleccionarBloque(idx) {
     const tablaLlantas = document.getElementById('tablaLlantasSeleccionadas').querySelector('tbody');
     tablaLlantas.innerHTML = llantas.map(item => `
         <tr>
-            <td>${item.descripcion || ''}</td>
-            <td>${item.cantidad || ''}</td>
-            <td>${item.volumenTotal.toFixed(2)} m³</td>
-            <td>${item.pesoTotal.toFixed(2)} kg</td>
+            <td>
+                ${item.descripcion || ''}<br>
+                <small class="text-muted">Código: ${item.codigo || 'N/A'}</small>
+            </td>
+            <td class="text-center">${item.cantidad || ''}</td>
+            <td>
+                ${item.volumenUnitario.toFixed(4)} m³ × ${item.cantidad} = 
+                <strong>${item.volumenTotal.toFixed(2)} m³</strong>
+            </td>
+            <td>
+                ${item.pesoUnitario.toFixed(2)} kg × ${item.cantidad} = 
+                <strong>${item.pesoTotal.toFixed(2)} kg</strong>
+            </td>
             <td>
                 <button class="btn btn-danger btn-sm" onclick="eliminarFila(this)">
                     <i class="bi bi-trash"></i>
@@ -5712,6 +5738,9 @@ function limpiarCalculadora() {
         return;
     }
 
+    // Limpiar las llantas agregadas globalmente
+    llantasAgregadas = [];
+    
     // Limpiar tabla de llantas agregadas
     const tablaLlantas = document.getElementById('tablaLlantasAgregadas').querySelector('tbody');
     tablaLlantas.innerHTML = '';
@@ -5719,6 +5748,23 @@ function limpiarCalculadora() {
     // Resetear valores de entrada
     document.getElementById('sugestionCantidad').value = '1';
     document.getElementById('sugestionTipoLlanta').selectedIndex = 0;
+    
+    // Limpiar totales
+    const totalLlantasDiv = document.getElementById('totalLlantas');
+    if (totalLlantasDiv) {
+        totalLlantasDiv.innerHTML = '';
+    }
+    
+    // Ocultar y limpiar resultados de sugerencia
+    const resultadoSugerencia = document.getElementById('resultadoSugerencia');
+    if (resultadoSugerencia) {
+        resultadoSugerencia.classList.add('d-none');
+    }
+    
+    const unidadSugeridaDetalles = document.getElementById('unidadSugeridaDetalles');
+    if (unidadSugeridaDetalles) {
+        unidadSugeridaDetalles.innerHTML = '';
+    }
     
     // Ocultar y limpiar sección de unidad sugerida
     const seccionUnidadSugerida = document.getElementById('seccionUnidadSugeridaCalculadora');
