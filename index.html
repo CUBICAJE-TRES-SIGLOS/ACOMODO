@@ -2432,11 +2432,43 @@ function searchInventario() {
             let distribucion = [];
             let volumenRestante = volumenTotal;
             let pesoRestante = pesoTotal;
+            
+            // Ordenar camiones por capacidad (mayor a menor)
             let camionesOrdenados = [...camionesDisponibles].sort((a, b) => 
                 (b.volumenNum + b.capacidadCargaNum) - (a.volumenNum + a.capacidadCargaNum)
             );
             
-            while (volumenRestante > 0 || pesoRestante > 0) {
+            // Intentar llenar el primer camión al 95% de su capacidad
+            if (camionesOrdenados.length > 0) {
+                const primerCamion = camionesOrdenados[0];
+                const capacidadVolumen95 = primerCamion.volumenNum * 0.95;
+                const capacidadPeso95 = primerCamion.capacidadCargaNum * 0.95;
+                
+                const volumenAsignadoPrimero = Math.min(volumenTotal, capacidadVolumen95);
+                const pesoAsignadoPrimero = Math.min(pesoTotal, capacidadPeso95);
+                
+                // Si podemos asignar una cantidad significativa al primer camión
+                if (volumenAsignadoPrimero > 0 || pesoAsignadoPrimero > 0) {
+                    const eficienciaPrimero = ((volumenAsignadoPrimero / primerCamion.volumenNum + 
+                                              pesoAsignadoPrimero / primerCamion.capacidadCargaNum) / 2) * 100;
+                    
+                    distribucion.push({
+                        ...primerCamion,
+                        volumenAsignado: volumenAsignadoPrimero,
+                        pesoAsignado: pesoAsignadoPrimero,
+                        eficiencia: eficienciaPrimero
+                    });
+                    
+                    volumenRestante -= volumenAsignadoPrimero;
+                    pesoRestante -= pesoAsignadoPrimero;
+                    
+                    // Remover el primer camión de la lista disponible
+                    camionesOrdenados.shift();
+                }
+            }
+            
+            // Distribuir el resto de la carga en otros camiones si es necesario
+            while ((volumenRestante > 0 || pesoRestante > 0) && camionesOrdenados.length > 0) {
                 let mejorCamion = null;
                 let mejorEficiencia = 0;
                 
@@ -2463,6 +2495,9 @@ function searchInventario() {
                 distribucion.push(mejorCamion);
                 volumenRestante -= mejorCamion.volumenAsignado;
                 pesoRestante -= mejorCamion.pesoAsignado;
+                
+                // Remover el camión usado de la lista disponible
+                camionesOrdenados = camionesOrdenados.filter(c => c.economico !== mejorCamion.economico);
             }
             
             return {
@@ -2516,22 +2551,18 @@ function searchInventario() {
                         return false;
                     }
                     
-                    // Calcular porcentajes de uso
-                    const porcentajeVolumen = (volumenTotal / volumenCamion) * 100;
-                    const porcentajePeso = (pesoTotal / capacidadCarga) * 100;
-                    
                     // Guardar los valores numéricos en el objeto
                     camion.volumenNum = volumenCamion;
                     camion.capacidadCargaNum = capacidadCarga;
                     
-                    // El camión es viable si puede llevar la carga
-                    const esViable = porcentajeVolumen <= 100 && porcentajePeso <= 100;
+                    // El camión es viable si tiene capacidad significativa
+                    const tieneCapacidad = volumenCamion >= 1 && capacidadCarga >= 100;
                     
-                    if (esViable) {
-                        console.log('Camión viable encontrado:', camion.economico);
+                    if (tieneCapacidad) {
+                        console.log('Camión disponible encontrado:', camion.economico);
                     }
                     
-                    return esViable;
+                    return tieneCapacidad;
                 } catch (error) {
                     console.error('Error al procesar camión:', camion, error);
                     return false;
@@ -2555,17 +2586,65 @@ function searchInventario() {
         const distribucion = distribuirCargaEnCamiones(volumenTotal, pesoTotal, camionesDisponibles);
 
         if (distribucion.distribucion.length === 0) {
-            contenedorDetalles.innerHTML = `
-                <div class="alert alert-warning">
-                    <h5><i class="bi bi-exclamation-triangle"></i> No hay suficientes unidades disponibles</h5>
-                    <p>La carga total es demasiado grande para las unidades disponibles:</p>
-                    <ul>
-                        <li>Volumen total: ${volumenTotal.toFixed(2)} m³</li>
-                        <li>Peso total: ${pesoTotal.toFixed(2)} kg</li>
-                        <li>Cantidad de llantas: ${cantidadTotalLlantas}</li>
-                    </ul>
-                </div>
-            `;
+            // Si no hay distribución pero hay camiones disponibles, mostrar mensaje de sugerencia
+            if (camionesDisponibles.length > 0) {
+                const mejoresCamiones = camionesDisponibles
+                    .sort((a, b) => b.volumenNum - a.volumenNum)
+                    .slice(0, 3);
+
+                contenedorDetalles.innerHTML = `
+                    <div class="alert alert-info">
+                        <h5><i class="bi bi-info-circle"></i> Sugerencia de Distribución</h5>
+                        <p>La carga total requiere múltiples unidades para su transporte:</p>
+                        <ul>
+                            <li>Volumen total a transportar: ${volumenTotal.toFixed(2)} m³</li>
+                            <li>Peso total a transportar: ${pesoTotal.toFixed(2)} kg</li>
+                            <li>Cantidad total de llantas: ${cantidadTotalLlantas}</li>
+                        </ul>
+                        <h6>Unidades Disponibles Sugeridas:</h6>
+                        <div class="table-responsive">
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>Unidad</th>
+                                        <th>Económico</th>
+                                        <th>Capacidad Volumen</th>
+                                        <th>Capacidad Peso</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${mejoresCamiones.map(camion => `
+                                        <tr>
+                                            <td>${camion.unidad}</td>
+                                            <td>${camion.economico}</td>
+                                            <td>${camion.volumenNum.toFixed(2)} m³</td>
+                                            <td>${camion.capacidadCargaNum.toFixed(0)} kg</td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                `;
+            } else {
+                contenedorDetalles.innerHTML = `
+                    <div class="alert alert-warning">
+                        <h5><i class="bi bi-exclamation-triangle"></i> No hay suficientes unidades disponibles</h5>
+                        <p>La carga total es demasiado grande y no hay unidades disponibles:</p>
+                        <ul>
+                            <li>Volumen total: ${volumenTotal.toFixed(2)} m³</li>
+                            <li>Peso total: ${pesoTotal.toFixed(2)} kg</li>
+                            <li>Cantidad de llantas: ${cantidadTotalLlantas}</li>
+                        </ul>
+                        <p>Sugerencias:</p>
+                        <ul>
+                            <li>Verificar si hay unidades adicionales disponibles</li>
+                            <li>Considerar dividir la carga en múltiples envíos</li>
+                            <li>Revisar si las cantidades ingresadas son correctas</li>
+                        </ul>
+                    </div>
+                `;
+            }
             return;
         }
 
@@ -2600,7 +2679,7 @@ function searchInventario() {
                             </div>
                             <div class="card-body">
                                 <div class="mb-2">
-                                    <strong>Volumen asignado:</strong>
+                                    <strong>Espacio ocupado:</strong>
                                     <div class="progress mb-1" style="height: 20px;">
                                         <div class="progress-bar bg-primary" 
                                              role="progressbar" 
@@ -2609,17 +2688,6 @@ function searchInventario() {
                                         </div>
                                     </div>
                                     <small>${camion.volumenAsignado.toFixed(2)} m³ de ${camion.volumenNum.toFixed(2)} m³</small>
-                                </div>
-                                <div>
-                                    <strong>Peso asignado:</strong>
-                                    <div class="progress mb-1" style="height: 20px;">
-                                        <div class="progress-bar bg-warning" 
-                                             role="progressbar" 
-                                             style="width: ${(camion.pesoAsignado/camion.capacidadCargaNum*100).toFixed(1)}%;">
-                                            ${(camion.pesoAsignado/camion.capacidadCargaNum*100).toFixed(1)}%
-                                        </div>
-                                    </div>
-                                    <small>${camion.pesoAsignado.toFixed(2)} kg de ${camion.capacidadCargaNum.toFixed(2)} kg</small>
                                 </div>
                             </div>
                             <div class="card-footer">
@@ -2636,10 +2704,8 @@ function searchInventario() {
                             <tr>
                                 <th>Unidad</th>
                                 <th>Económico</th>
-                                <th>Capacidad Volumen</th>
-                                <th>Capacidad Peso</th>
-                                <th>Uso Volumen</th>
-                                <th>Uso Peso</th>
+                                <th>Capacidad Total</th>
+                                <th>Espacio ocupado</th>
                                 <th>Eficiencia</th>
                             </tr>
                         </thead>
@@ -2656,24 +2722,13 @@ function searchInventario() {
                         <td>${camion.unidad || 'Sin nombre'}</td>
                         <td>${camion.economico}</td>
                         <td>${parseFloat(camion.volumen).toFixed(2)} m³</td>
-                        <td>${parseFloat(camion["capacidad de carga (kg)"]).toFixed(0)} kg</td>
                         <td>
                             <div class="progress" style="height: 20px;">
-                                <div class="progress-bar bg-info" 
+                                <div class="progress-bar bg-primary" 
                                      role="progressbar" 
                                      style="width: ${camion.porcentajeVolumen}%;"
                                      title="${camion.porcentajeVolumen.toFixed(1)}%">
                                     ${camion.porcentajeVolumen.toFixed(1)}%
-                                </div>
-                            </div>
-                        </td>
-                        <td>
-                            <div class="progress" style="height: 20px;">
-                                <div class="progress-bar bg-warning" 
-                                     role="progressbar" 
-                                     style="width: ${camion.porcentajePeso}%;"
-                                     title="${camion.porcentajePeso.toFixed(1)}%">
-                                    ${camion.porcentajePeso.toFixed(1)}%
                                 </div>
                             </div>
                         </td>
