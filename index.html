@@ -2423,7 +2423,7 @@ function searchInventario() {
         const contenedorResultado = document.getElementById('resultadoSugerencia');
         const contenedorDetalles = document.getElementById('unidadSugeridaDetalles');
 
-        // Función auxiliar para distribuir carga
+        // Función auxiliar para distribuir carga de manera inteligente
         function distribuirCargaEnCamiones(volumenTotal, pesoTotal, camionesDisponibles) {
             if (!Array.isArray(camionesDisponibles)) {
                 console.error('camionesDisponibles no es un array:', camionesDisponibles);
@@ -2432,29 +2432,64 @@ function searchInventario() {
             let distribucion = [];
             let volumenRestante = volumenTotal;
             let pesoRestante = pesoTotal;
-            let camionesOrdenados = [...camionesDisponibles].sort((a, b) => 
-                (b.volumenNum + b.capacidadCargaNum) - (a.volumenNum + a.capacidadCargaNum)
-            );
+            
+            // Ordenamos los camiones por capacidad, pero ahora consideramos diferentes tipos
+            let camionesOrdenados = [...camionesDisponibles].sort((a, b) => {
+                // Primero ordenamos por capacidad total
+                const capTotalA = b.volumenNum + b.capacidadCargaNum;
+                const capTotalB = a.volumenNum + a.capacidadCargaNum;
+                if (capTotalA !== capTotalB) return capTotalA - capTotalB;
+                
+                // Si son similares en capacidad, preferimos el más eficiente para el volumen actual
+                const eficienciaA = Math.min(volumenTotal / b.volumenNum, pesoTotal / b.capacidadCargaNum);
+                const eficienciaB = Math.min(volumenTotal / a.volumenNum, pesoTotal / a.capacidadCargaNum);
+                return eficienciaA - eficienciaB;
+            });
             
             while (volumenRestante > 0 || pesoRestante > 0) {
                 let mejorCamion = null;
                 let mejorEficiencia = 0;
+                let mejorCombinacion = null;
                 
+                // Primera pasada: intentar encontrar un camión que pueda llevar toda la carga
                 for (const camion of camionesOrdenados) {
-                    const volumenPosible = Math.min(volumenRestante, camion.volumenNum);
-                    const pesoPosible = Math.min(pesoRestante, camion.capacidadCargaNum);
-                    const eficienciaVolumen = volumenPosible / camion.volumenNum;
-                    const eficienciaPeso = pesoPosible / camion.capacidadCargaNum;
-                    const eficienciaPromedio = (eficienciaVolumen + eficienciaPeso) / 2;
-                    
-                    if (eficienciaPromedio > mejorEficiencia) {
-                        mejorEficiencia = eficienciaPromedio;
-                        mejorCamion = {
-                            ...camion,
-                            volumenAsignado: volumenPosible,
-                            pesoAsignado: pesoPosible,
-                            eficiencia: eficienciaPromedio * 100
-                        };
+                    if (camion.volumenNum >= volumenRestante && camion.capacidadCargaNum >= pesoRestante) {
+                        const eficienciaVolumen = volumenRestante / camion.volumenNum;
+                        const eficienciaPeso = pesoRestante / camion.capacidadCargaNum;
+                        const eficienciaPromedio = (eficienciaVolumen + eficienciaPeso) / 2;
+                        
+                        if (eficienciaPromedio > 0.7) { // Si es más del 70% eficiente, lo usamos
+                            mejorCamion = {
+                                ...camion,
+                                volumenAsignado: volumenRestante,
+                                pesoAsignado: pesoRestante,
+                                eficiencia: eficienciaPromedio * 100
+                            };
+                            break;
+                        }
+                    }
+                }
+                
+                // Si no encontramos un camión ideal, buscamos la mejor combinación
+                if (!mejorCamion) {
+                    for (const camion of camionesOrdenados) {
+                        const volumenPosible = Math.min(volumenRestante, camion.volumenNum);
+                        const pesoPosible = Math.min(pesoRestante, camion.capacidadCargaNum);
+                        const eficienciaVolumen = volumenPosible / camion.volumenNum;
+                        const eficienciaPeso = pesoPosible / camion.capacidadCargaNum;
+                        const eficienciaPromedio = (eficienciaVolumen + eficienciaPeso) / 2;
+                        
+                        // Si es más eficiente que lo que teníamos antes
+                        if (eficienciaPromedio > mejorEficiencia) {
+                            mejorEficiencia = eficienciaPromedio;
+                            mejorCamion = {
+                                ...camion,
+                                volumenAsignado: volumenPosible,
+                                pesoAsignado: pesoPosible,
+                                eficiencia: eficienciaPromedio * 100,
+                                esParcial: true // Marcamos que este camión llevará carga parcial
+                            };
+                        }
                     }
                 }
                 
@@ -2465,10 +2500,19 @@ function searchInventario() {
                 pesoRestante -= mejorCamion.pesoAsignado;
             }
             
+            // Calcular estadísticas de la distribución
+            const estadisticas = {
+                numUnidades: distribucion.length,
+                eficienciaPromedio: distribucion.reduce((sum, c) => sum + c.eficiencia, 0) / distribucion.length,
+                volumenTotalUtilizado: distribucion.reduce((sum, c) => sum + c.volumenAsignado, 0),
+                pesoTotalUtilizado: distribucion.reduce((sum, c) => sum + c.pesoAsignado, 0)
+            };
+
             return {
                 distribucion,
                 volumenRestante,
-                pesoRestante
+                pesoRestante,
+                estadisticas
             };
         }
 
@@ -2489,6 +2533,17 @@ function searchInventario() {
                 </div>`;
             return;
         }
+
+        // Mostrar el spinner mientras se calcula
+        contenedorDetalles.innerHTML = `
+            <div class="alert alert-info">
+                <div class="d-flex align-items-center">
+                    <div class="spinner-border spinner-border-sm me-2" role="status">
+                        <span class="visually-hidden">Calculando...</span>
+                    </div>
+                    <span>Calculando la mejor distribución de unidades...</span>
+                </div>
+            </div>`;
 
         // Calcular totales de todas las llantas agregadas
         const volumenTotal = llantasAgregadas.reduce((sum, llanta) => sum + llanta.volumen, 0);
@@ -2555,6 +2610,93 @@ function searchInventario() {
         const distribucion = distribuirCargaEnCamiones(volumenTotal, pesoTotal, camionesDisponibles);
 
         if (distribucion.distribucion.length === 0) {
+            // Intentar sugerir múltiples unidades
+            let unidadesOrdenadas = flota
+                .filter(camion => {
+                    const volumenNum = parseFloat(camion.volumen);
+                    const pesoNum = parseFloat(camion["capacidad de carga (kg)"]);
+                    return !isNaN(volumenNum) && !isNaN(pesoNum) && volumenNum > 0 && pesoNum > 0;
+                })
+                .sort((a, b) => {
+                    const volA = parseFloat(a.volumen);
+                    const volB = parseFloat(b.volumen);
+                    const pesoA = parseFloat(a["capacidad de carga (kg)"]);
+                    const pesoB = parseFloat(b["capacidad de carga (kg)"]);
+                    return (volB + pesoB) - (volA + pesoA);
+                });
+
+            let distribucionMultiple = [];
+            let volumenRestante = volumenTotal;
+            let pesoRestante = pesoTotal;
+            let llantasRestantes = cantidadTotalLlantas;
+
+            for (const unidad of unidadesOrdenadas) {
+                if (volumenRestante <= 0 && pesoRestante <= 0) break;
+
+                const volumenUnidad = parseFloat(unidad.volumen);
+                const pesoUnidad = parseFloat(unidad["capacidad de carga (kg)"]);
+                
+                // Calcular cuánto puede llevar esta unidad
+                const volumenAsignable = Math.min(volumenRestante, volumenUnidad);
+                const pesoAsignable = Math.min(pesoRestante, pesoUnidad);
+                const porcentajeCapacidad = Math.min(
+                    (volumenAsignable / volumenUnidad) * 100,
+                    (pesoAsignable / pesoUnidad) * 100
+                );
+
+                if (porcentajeCapacidad > 20) { // Solo usar si se aprovecha al menos el 20%
+                    distribucionMultiple.push({
+                        ...unidad,
+                        volumenAsignado: volumenAsignable,
+                        pesoAsignado: pesoAsignable,
+                        eficiencia: porcentajeCapacidad,
+                        llantasEstimadas: Math.floor(llantasRestantes * (volumenAsignable / volumenRestante))
+                    });
+
+                    volumenRestante -= volumenAsignable;
+                    pesoRestante -= pesoAsignable;
+                    llantasRestantes = Math.floor(llantasRestantes * (volumenRestante / volumenTotal));
+                }
+            }
+
+            if (distribucionMultiple.length > 0) {
+                // Mostrar sugerencia de múltiples unidades
+                contenedorDetalles.innerHTML = `
+                    <div class="alert alert-info">
+                        <h5><i class="bi bi-info-circle"></i> Sugerencia de Distribución Múltiple</h5>
+                        <p>La carga se puede distribuir en ${distribucionMultiple.length} unidades:</p>
+                        <div class="table-responsive">
+                            <table class="table table-bordered">
+                                <thead>
+                                    <tr>
+                                        <th>Unidad</th>
+                                        <th>Económico</th>
+                                        <th>Llantas Est.</th>
+                                        <th>Volumen</th>
+                                        <th>Peso</th>
+                                        <th>Eficiencia</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${distribucionMultiple.map(unidad => `
+                                        <tr>
+                                            <td>${unidad.unidad}</td>
+                                            <td>${unidad.economico}</td>
+                                            <td>${unidad.llantasEstimadas}</td>
+                                            <td>${unidad.volumenAsignado.toFixed(2)} m³</td>
+                                            <td>${unidad.pesoAsignado.toFixed(2)} kg</td>
+                                            <td>${unidad.eficiencia.toFixed(1)}%</td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                `;
+                return;
+            }
+
+            // Si no se pudo encontrar una distribución, mostrar mensaje de error
             contenedorDetalles.innerHTML = `
                 <div class="alert alert-warning">
                     <h5><i class="bi bi-exclamation-triangle"></i> No hay suficientes unidades disponibles</h5>
