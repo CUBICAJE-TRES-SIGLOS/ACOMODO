@@ -2729,10 +2729,43 @@ function searchInventario() {
         const contenedorResultado = document.getElementById('resultadoSugerencia');
         const contenedorDetalles = document.getElementById('unidadSugeridaDetalles');
 
+        // Verificar que flota tenga datos
+        if (!Array.isArray(flota) || flota.length === 0) {
+            console.error('No hay unidades en la flota');
+            contenedorResultado.innerHTML = `
+                <div class="alert alert-danger">
+                    <i class="bi bi-exclamation-triangle"></i>
+                    Error: No hay unidades registradas en la flota.
+                </div>
+            `;
+            contenedorResultado.classList.remove('d-none');
+            return;
+        }
+
+        console.log('Total unidades en flota:', flota.length);
+        console.log('Total pedidos confirmados:', pedidosConfirmados.length);
+
         // Filtrar las unidades que ya están en pedidos confirmados
         const unidadesDisponibles = flota.filter(unidad => {
-            return !pedidosConfirmados.some(pedido => pedido.economico === unidad.codigo);
+            // Verificar que la unidad tenga código
+            if (!unidad.codigo && !unidad.economico) {
+                console.warn('Unidad sin código:', unidad);
+                return false;
+            }
+
+            const codigoUnidad = String(unidad.codigo || unidad.economico).trim();
+            const yaEstaConfirmada = pedidosConfirmados.some(pedido => 
+                String(pedido.economico).trim() === codigoUnidad
+            );
+            
+            if (!yaEstaConfirmada) {
+                console.log('Unidad disponible:', codigoUnidad);
+            }
+            
+            return !yaEstaConfirmada;
         });
+
+        console.log('Unidades disponibles encontradas:', unidadesDisponibles.length);
 
         // Si no hay unidades disponibles, mostrar mensaje
         if (unidadesDisponibles.length === 0) {
