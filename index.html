@@ -548,6 +548,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             <th>Unidad</th>
                             <th>Económico</th>
                             <th>Llantas</th>
+                            <th>Descripción</th>
                             <th>Volumen</th>
                             <th>Peso</th>
                             <th>Acciones</th>
@@ -2642,15 +2643,17 @@ function searchInventario() {
         
         pedidosConfirmados.forEach((pedido, index) => {
             const tr = document.createElement('tr');
+            const totalLlantas = pedido.detallesLlantas.reduce((sum, l) => sum + l.cantidad, 0);
+            const descripcionesLlantas = pedido.detallesLlantas.map(l => 
+                `${l.descripcion} (${l.cantidad})`
+            ).join('<br>');
+            
             tr.innerHTML = `
                 <td>${pedido.fecha}</td>
                 <td>${pedido.unidad}</td>
                 <td>${pedido.economico}</td>
-                <td>
-                    ${pedido.detallesLlantas.map(l => 
-                        `${l.cantidad} ${l.descripcion}`
-                    ).join('<br>')}
-                </td>
+                <td>${totalLlantas}</td>
+                <td>${descripcionesLlantas}</td>
                 <td>${pedido.volumenTotal.toFixed(2)} m³</td>
                 <td>${pedido.pesoTotal.toFixed(2)} kg</td>
                 <td>
@@ -2716,9 +2719,32 @@ function searchInventario() {
     async function calcularSugerenciaUnidad() {
         console.log('Iniciando cálculo de sugerencia...');
         
+        // Si no hay llantas agregadas, no hacer nada
+        if (llantasAgregadas.length === 0) {
+            document.getElementById('resultadoSugerencia').classList.add('d-none');
+            return;
+        }
+
         // Inicializar elementos UI
         const contenedorResultado = document.getElementById('resultadoSugerencia');
         const contenedorDetalles = document.getElementById('unidadSugeridaDetalles');
+
+        // Filtrar las unidades que ya están en pedidos confirmados
+        const unidadesDisponibles = flota.filter(unidad => {
+            return !pedidosConfirmados.some(pedido => pedido.economico === unidad.codigo);
+        });
+
+        // Si no hay unidades disponibles, mostrar mensaje
+        if (unidadesDisponibles.length === 0) {
+            contenedorResultado.innerHTML = `
+                <div class="alert alert-warning">
+                    <i class="bi bi-exclamation-triangle"></i>
+                    No hay unidades disponibles en este momento. Todas las unidades están asignadas.
+                </div>
+            `;
+            contenedorResultado.classList.remove('d-none');
+            return;
+        }
 
         // Función auxiliar para distribuir carga de manera inteligente
         function distribuirCargaEnCamiones(volumenTotal, pesoTotal, camionesDisponibles) {
@@ -2903,12 +2929,12 @@ function searchInventario() {
                 };
             });
 
-        // Calcular la distribución óptima de camiones
+        // Calcular la distribución óptima de camiones usando solo unidades disponibles
         const distribucion = distribuirCargaEnCamiones(volumenTotal, pesoTotal, camionesDisponibles);
 
         if (distribucion.distribucion.length === 0) {
-            // Intentar sugerir múltiples unidades
-            let unidadesOrdenadas = flota
+            // Intentar sugerir múltiples unidades de las disponibles
+            let unidadesOrdenadas = unidadesDisponibles
                 .filter(camion => {
                     const volumenNum = parseFloat(camion.volumen);
                     const pesoNum = parseFloat(camion["capacidad de carga (kg)"]);
