@@ -2519,17 +2519,44 @@ function searchInventario() {
                 throw new Error('Datos de pedido incompletos');
             }
 
-            // Preparar los datos de las llantas
-            const totalLlantas = pedido.detallesLlantas.reduce((sum, llanta) => 
-                sum + (parseInt(llanta.cantidad) || 0), 0);
-            
-            const descripcionLlantas = pedido.detallesLlantas
-                .map(llanta => `${llanta.descripcion} (${llanta.cantidad})`)
-                .join(', ');
-                
-            // Formatear valores para asegurar que sean válidos
-            const volumenFormateado = (parseFloat(pedido.volumenTotal) || 0).toFixed(2);
-            const pesoFormateado = (parseFloat(pedido.pesoTotal) || 0).toFixed(2);
+            // Agrupar llantas por descripción
+            const llantasPorTipo = pedido.detallesLlantas.reduce((grupos, llanta) => {
+                const tipo = llanta.descripcion;
+                if (!grupos[tipo]) {
+                    grupos[tipo] = {
+                        cantidad: 0,
+                        volumen: 0,
+                        peso: 0
+                    };
+                }
+                grupos[tipo].cantidad += parseInt(llanta.cantidad) || 0;
+                grupos[tipo].volumen += parseFloat(llanta.volumen) || 0;
+                grupos[tipo].peso += parseFloat(llanta.peso) || 0;
+                return grupos;
+            }, {});
+
+            // Preparar las descripciones y cantidades separadas
+            const descripciones = [];
+            const cantidades = [];
+            const volumenes = [];
+            const pesos = [];
+
+            Object.entries(llantasPorTipo).forEach(([descripcion, datos]) => {
+                descripciones.push(descripcion);
+                cantidades.push(datos.cantidad.toString());
+                volumenes.push(datos.volumen.toFixed(2));
+                pesos.push(datos.peso.toFixed(2));
+            });
+
+            // Formatear valores totales
+            const totalLlantas = cantidades.reduce((sum, cant) => sum + parseInt(cant), 0);
+            const volumenTotal = volumenes.reduce((sum, vol) => sum + parseFloat(vol), 0);
+            const pesoTotal = pesos.reduce((sum, peso) => sum + parseFloat(peso), 0);
+
+            const descripcionLlantas = descripciones.join(' || ');
+            const cantidadesFormateadas = cantidades.join(' || ');
+            const volumenFormateado = volumenTotal.toFixed(2);
+            const pesoFormateado = pesoTotal.toFixed(2);
 
             // Formatear los datos como lo requiere SheetDB - usando los nombres exactos de las columnas
             const datosParaEnviar = [{
@@ -2538,8 +2565,10 @@ function searchInventario() {
                 "Económico": pedido.economico,
                 "Llantas": totalLlantas.toString(),
                 "Descripcion": descripcionLlantas,
+                "Cantidad": cantidadesFormateadas,
                 "Volumen": volumenFormateado,
-                "Peso": pesoFormateado
+                "Peso": pesoFormateado,
+                "Detalles": JSON.stringify(llantasPorTipo) // Guardamos los detalles completos por si son necesarios después
             }];
             
             console.log('Datos a enviar:', datosParaEnviar);
@@ -5063,20 +5092,33 @@ function renderPedidosConfirmados() {
     tbody.innerHTML = '';
     pedidosConfirmados.forEach((pedido, idx) => {
         const tr = document.createElement('tr');
+        
+        // Separar las descripciones y cantidades
+        const descripciones = pedido.Descripcion ? pedido.Descripcion.split(' || ') : [];
+        const cantidades = pedido.Cantidad ? pedido.Cantidad.split(' || ') : [];
+        
+        // Crear una lista formateada de descripciones y cantidades
+        const detallesLlantas = descripciones.map((desc, i) => {
+            const cantidad = cantidades[i] || '0';
+            return `<li>${desc}: ${cantidad} unidades</li>`;
+        }).join('');
+
         tr.innerHTML = `
-            <td>${pedido.camion}</td>
-            <td>${pedido.llantas}</td>
-            <td>${pedido.descripcion || ''}</td>
+            <td>${pedido.Unidad || pedido.camion || ''}</td>
+            <td>${pedido.Llantas || ''}</td>
             <td>
-              <ul style="padding-left:18px;margin:0;">
-                ${pedido.cantidad
-                  ? pedido.cantidad.split(',').map(q => `<li style="text-align:left;">${q.trim()}</li>`).join('')
-                  : ''}
-             </ul>
+                <ul style="padding-left:18px;margin:0;list-style-type:none;">
+                    ${detallesLlantas}
+                </ul>
             </td>
-            <td>${pedido["total,cantidad"] || ''}</td>
+            <td>
+                <ul style="padding-left:18px;margin:0;">
+                    ${cantidades.map(q => `<li style="text-align:left;">${q.trim()} unidades</li>`).join('')}
+                </ul>
+            </td>
+            <td>${pedido.Llantas || pedido["total,cantidad"] || ''}</td>
             <td>${pedido.linea || ''}</td>
-            <td>${Number(pedido.volumen).toLocaleString('es-MX', { minimumFractionDigits: 3, maximumFractionDigits: 3 })}</td>
+            <td>${Number(pedido.Volumen || pedido.volumen).toLocaleString('es-MX', { minimumFractionDigits: 3, maximumFractionDigits: 3 })}</td>
             <td>${Number(pedido.peso).toLocaleString('es-MX', { minimumFractionDigits: 3, maximumFractionDigits: 3 })}</td>
             <td>$${Number(pedido.valor).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
             <td>${pedido.fecha || ''}</td>
@@ -6128,16 +6170,41 @@ function seleccionarBloque(idx) {
         `;
     }).join('');
     
-    // Mostrar totales
+    // Mostrar totales separados por tipo de llanta
+    const tiposPorSeparado = llantasAgregadas.reduce((grupos, llanta) => {
+        const tipo = llanta.descripcion;
+        if (!grupos[tipo]) {
+            grupos[tipo] = {
+                cantidad: 0,
+                volumen: 0,
+                peso: 0
+            };
+        }
+        grupos[tipo].cantidad += llanta.cantidad;
+        grupos[tipo].volumen += llanta.volumenTotal;
+        grupos[tipo].peso += llanta.pesoTotal;
+        return grupos;
+    }, {});
+
     document.getElementById('totalLlantas').innerHTML = `
         <div class="alert alert-info">
-            <strong>Resumen de Carga Total:</strong><br>
-            ${llantasAgregadas.map(llanta => 
-                `• ${llanta.cantidad} llantas ${llanta.descripcion}<br>`
-            ).join('')}
-            • Volumen total de carga: ${totalVolumen.toFixed(2)} m³<br>
-            • Peso total de carga: ${totalPeso.toFixed(2)} kg<br>
-            • Total de llantas: ${cantidadTotal}
+            <strong>Resumen Detallado por Tipo de Llanta:</strong><br>
+            <div class="mt-3">
+                ${Object.entries(tiposPorSeparado).map(([tipo, datos]) => `
+                    <div class="mb-2 border-bottom pb-2">
+                        <strong>${tipo}</strong><br>
+                        • Cantidad: ${datos.cantidad} llantas<br>
+                        • Volumen: ${datos.volumen.toFixed(2)} m³<br>
+                        • Peso: ${datos.peso.toFixed(2)} kg
+                    </div>
+                `).join('')}
+            </div>
+            <div class="mt-3 pt-2 border-top">
+                <strong>Totales Generales:</strong><br>
+                • Volumen total: ${totalVolumen.toFixed(2)} m³<br>
+                • Peso total: ${totalPeso.toFixed(2)} kg<br>
+                • Total de llantas: ${cantidadTotal} unidades
+            </div>
         </div>
     `;
     
