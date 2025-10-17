@@ -475,9 +475,34 @@
 
 <script>
 // Scripts para el modal
+// Función para cargar las descripciones de llantas
+async function cargarDescripcionesLlantas() {
+    try {
+        const response = await fetch('https://sheetdb.io/api/v1/xir557raoc40l?sheet=llantas');
+        if (!response.ok) {
+            throw new Error('Error al cargar datos de llantas');
+        }
+        const data = await response.json();
+        return data;
+    } catch (error) {
+        console.error('Error al cargar descripciones de llantas:', error);
+        throw error;
+    }
+}
+
+// Función para inicializar la aplicación
+async function inicializarAplicacion() {
+    try {
+        await cargarDatosDesdeSheetDB();
+        console.log('Datos cargados correctamente');
+    } catch (error) {
+        console.error('Error al inicializar la aplicación:', error);
+    }
+}
+
 document.addEventListener('DOMContentLoaded', function() {
-    // Cargar datos desde SheetDB al iniciar la página
-    cargarDatosDesdeSheetDB();
+    // Inicializar la aplicación
+    inicializarAplicacion();
     
     // Función para mostrar instrucciones
     window.mostrarInstrucciones = function() {
