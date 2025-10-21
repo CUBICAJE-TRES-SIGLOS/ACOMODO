@@ -2795,6 +2795,17 @@ function searchInventario() {
         }
     }
 
+    // Función para formatear la descripción con viñetas
+    function formatearDescripcionConVinetas(descripcion) {
+        if (!descripcion) return '';
+        // Dividir por coma y asegurarse de que cada elemento tenga el formato "X x Y"
+        return descripcion.split(',')
+            .map(item => item.trim())
+            .filter(item => item && item.includes('x')) // Solo elementos válidos que contengan "x"
+            .map(item => `• ${item}`)
+            .join('<br>');
+    }
+
     // Función para actualizar la tabla de pedidos confirmados
     function actualizarTablaPedidosConfirmados() {
         const tbody = document.getElementById('tablaPedidosConfirmados');
@@ -2823,12 +2834,16 @@ function searchInventario() {
 
             console.log('Mostrando pedido:', pedido);
             const tr = document.createElement('tr');
+            // Formatear la descripción con viñetas
+            const descripcionFormateada = formatearDescripcionConVinetas(pedido.Descripcion || pedido.descripcion);
+            
+            // Crear la celda de descripción con estilo
             tr.innerHTML = `
                 <td>${fecha}</td>
                 <td>${unidad}</td>
                 <td>${economico}</td>
                 <td>${llantas}</td>
-                <td>${descripcion}</td>
+                <td style="white-space: pre-line; line-height: 1.5;">${descripcionFormateada}</td>
                 <td>${volumen} m³</td>
                 <td>${peso} kg</td>
                 <td>
