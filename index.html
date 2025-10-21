@@ -891,6 +891,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                     <th style="width: 150px">Uso Volumen</th>
                                     <th style="width: 150px">Uso Peso</th>
                                     <th style="width: 150px">Eficiencia</th>
+                                    <th style="width: 100px">Acciones</th>
                                 </tr>
                             </thead>
                             <tbody id="tablaUnidadesSugeridasCalculadora">
@@ -1001,6 +1002,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                 <th style="width: 150px">Uso Volumen</th>
                                 <th style="width: 150px">Uso Peso</th>
                                 <th style="width: 150px">Eficiencia</th>
+                                <th style="width: 100px">Acciones</th>
                             </tr>
                         </thead>
                         <tbody id="tablaUnidadesSugeridasBusqueda">
@@ -6109,7 +6111,7 @@ function seleccionarBloque(idx) {
     if (unidadesOptimas.length === 0) {
         tablaSugerencias.innerHTML = `
             <tr>
-                <td colspan="7">
+                <td colspan="8">
                     <div class="alert alert-warning mb-0">
                         <i class="bi bi-exclamation-triangle-fill me-2"></i>
                         No se encontró ninguna unidad que pueda transportar esta carga.
@@ -6160,6 +6162,11 @@ function seleccionarBloque(idx) {
                             ${eficiencia}%
                         </div>
                     </div>
+                </td>
+                <td>
+                    <button class="btn btn-primary btn-sm" onclick="apartarUnidad('${unidad.codigo}')">
+                        Apartar
+                    </button>
                 </td>
             </tr>
         `;
@@ -6463,6 +6470,11 @@ function calcularUnidadSugerida(volumenTotal, pesoTotal) {
                                 ${eficiencia}%
                             </div>
                         </div>
+                    </td>
+                    <td>
+                        <button class="btn btn-primary btn-sm" onclick="apartarUnidad('${unidad.codigo}')">
+                            Apartar
+                        </button>
                     </td>
                 </tr>
             `;
