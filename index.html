@@ -1580,7 +1580,12 @@ async function procesarBloqueFacturas(datos) {
                 throw new Error(`Error al cargar pedidos confirmados: ${response.status}`);
             }
             const data = await response.json();
-            pedidosConfirmados = data;
+            // Normalizar los datos para asegurar consistencia con los nombres de columnas
+            pedidosConfirmados = data.map(pedido => ({
+                ...pedido,
+                economico: pedido['Económico'] || pedido['Economico'] || pedido['economico'] || '', // Manejar diferentes variantes
+                unidad: pedido['Unidad'] || pedido['unidad'] || ''
+            }));
             actualizarTablaPedidosConfirmados();
         } catch (e) {
             alert('No se pudieron cargar los pedidos confirmados: ' + e.message);
@@ -2700,7 +2705,7 @@ function searchInventario() {
                 data: [{
                     "Fecha": fecha,
                     "Unidad": nombreUnidad,
-                    "Economico": numeroEconomico, // Asegurarse de que coincida con el nombre de la columna en SheetDB
+                    "Económico": numeroEconomico, // Nombre exacto de la columna en la hoja de cálculo
                     "Llantas": llantasBloque.reduce((sum, l) => sum + (parseInt(l.cantidad) || 0), 0),
                     "Descripcion": llantasBloque.map(l => `${l.cantidad} x ${l.descripcion}`).join(', '),
                     "Volumen": Number(bloqueSeleccionado.volumenTotal || volumenTotal || 0).toFixed(2),
@@ -2944,9 +2949,10 @@ function searchInventario() {
             }
 
             const codigoUnidad = String(unidad.codigo || unidad.economico).trim();
-            const yaEstaConfirmada = pedidosConfirmados.some(pedido => 
-                String(pedido.economico).trim() === codigoUnidad
-            );
+            const yaEstaConfirmada = pedidosConfirmados.some(pedido => {
+                const pedidoEconomico = String(pedido['Económico'] || pedido.Economico || pedido.economico || '').trim();
+                return pedidoEconomico === codigoUnidad;
+            });
             
             if (!yaEstaConfirmada) {
                 console.log('Unidad disponible:', codigoUnidad);
