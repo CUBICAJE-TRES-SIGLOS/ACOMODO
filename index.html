@@ -828,12 +828,22 @@ document.addEventListener('DOMContentLoaded', function() {
 
         <!-- Campo para agregar bloque por folio -->
         <div style="margin-bottom: 10px;">
-             <label for="inputFolioFacturaPedido"><b>Folio de Factura (autoagregar bloque):</b></label>
-             <input type="text" id="inputFolioFacturaPedido" placeholder="Escribe el folio y presiona Enter" onkeydown="if(event.key==='Enter'){agregarBloquePorFolioPedido();return false;}" style="margin-left:8px;"/>
-             <button class="primary" onclick="buscarBloquePorFolio()">Buscar bloque</button>
-             <button class="primary" onclick="agregarBloquePorFolioPedido()">Agregar bloque por folio</button>
-             <button class="primary" onclick="limpiarPedidosActuales()" style="background:#d9534f;">Limpiar</button>
+             <label for="inputFolioFacturaPedido"><b>Folio de Factura:</b></label>
+             <div class="input-group" style="margin: 10px 0;">
+                 <input type="text" id="inputFolioFacturaPedido" class="form-control" placeholder="Escribe el folio para buscar" style="margin-left:8px;"/>
+                 <div class="input-group-append" style="display: flex; gap: 5px; margin-left: 5px;">
+                     <button class="primary" onclick="buscarBloquePorFolio()">Buscar bloque</button>
+                     <button class="primary" onclick="agregarBloquePorFolioPedido(false)">Agregar bloque</button>
+                     <button class="primary" onclick="agregarBloquePorFolioPedido(true)" style="background:#28a745;">
+                         <i class="bi bi-plus-circle"></i> Añadir Más
+                     </button>
+                     <button class="primary" onclick="limpiarPedidosActuales()" style="background:#d9534f;">
+                         <i class="bi bi-trash"></i> Limpiar
+                     </button>
+                 </div>
+             </div>
              <div id="bloqueBuscadoPedido"></div>
+             <div id="bloquesPendientes" class="mt-2"></div>
               <div style="margin-top: 10px; font-weight: bold;">
             <span id="totalesPedido"></span>
         </div>
@@ -1385,32 +1395,31 @@ document.getElementById('inputFolioFacturaPedido').addEventListener('input', fun
     }
 });
 // Pega aquí:
-async function agregarBloquePorFolioPedido() {
+async function agregarBloquePorFolioPedido(agregarMas = false) {
     const folio = document.getElementById('inputFolioFacturaPedido').value.trim().toLowerCase();
     if (!folio) {
         alert('Escribe un folio válido.');
         return;
     }
+    
+    const bloquesPendientesDiv = document.getElementById('bloquesPendientes');
 
     try {
         console.log("Iniciando búsqueda para folio:", folio);
         const divResultado = document.getElementById('bloqueBuscadoPedido');
+        let productosAgregados = false;
 
         // 1. Buscar primero en facturasParaGuardar (facturas recién escaneadas)
         console.log("Buscando en facturas recién escaneadas...", facturasParaGuardar);
-        const facturaReciente = facturasParaGuardar.find(f => 
+        const facturasRecientes = facturasParaGuardar.filter(f => 
             f.Nombre?.toLowerCase() === folio ||
             f.Folio?.toLowerCase() === folio
         );
 
-        if (facturaReciente) {
-            console.log("Encontrado en facturas recién escaneadas:", facturaReciente);
-            await procesarBloqueFacturas([facturaReciente]);
-            divResultado.innerHTML = `
-                <div class="alert alert-success mt-2">
-                    Se agregaron los productos de la factura al pedido.
-                </div>`;
-            return;
+        if (facturasRecientes.length > 0) {
+            console.log("Encontrado en facturas recién escaneadas:", facturasRecientes);
+            await procesarBloqueFacturas(facturasRecientes);
+            productosAgregados = true;
         }
 
         // 2. Buscar en escaneados especiales
@@ -1426,27 +1435,21 @@ async function agregarBloquePorFolioPedido() {
         if (escaneadosDelFolio.length > 0) {
             console.log("Encontrado en escaneados especiales:", escaneadosDelFolio);
             await procesarBloqueFacturas(escaneadosDelFolio);
-            divResultado.innerHTML = `
-                <div class="alert alert-success mt-2">
-                    Se agregaron los productos de escaneados especiales al pedido.
-                </div>`;
-            return;
+            productosAgregados = true;
         }
 
         // 3. Buscar en bloquesFacturas
         console.log("Buscando en bloques de facturas...");
-        const bloqueFactura = bloquesFacturas.find(b => 
+        const bloquesFactura = bloquesFacturas.filter(b => 
             b.nombre.toLowerCase() === folio
         );
 
-        if (bloqueFactura) {
-            console.log("Encontrado en bloques de facturas");
-            await procesarBloqueFacturas(bloqueFactura.datos);
-            divResultado.innerHTML = `
-                <div class="alert alert-success mt-2">
-                    Se agregaron los productos del bloque al pedido.
-                </div>`;
-            return;
+        if (bloquesFactura.length > 0) {
+            console.log("Encontrado en bloques de facturas:", bloquesFactura);
+            for (const bloque of bloquesFactura) {
+                await procesarBloqueFacturas(bloque.datos);
+            }
+            productosAgregados = true;
         }
 
         // 4. Buscar en reservados como última opción
@@ -1460,14 +1463,48 @@ async function agregarBloquePorFolioPedido() {
         if (reservadosDelFolio.length > 0) {
             console.log("Encontrado en reservados");
             await procesarBloqueReservados(reservadosDelFolio);
-            divResultado.innerHTML = `
-                <div class="alert alert-success mt-2">
-                    Se agregaron los productos reservados al pedido.
-                </div>`;
+            productosAgregados = true;
+        }
+
+        // Mostrar resultado y actualizar interfaz
+        if (productosAgregados) {
+            if (agregarMas) {
+                // Agregar a la lista de bloques pendientes
+                const bloquePendiente = document.createElement('div');
+                bloquePendiente.className = 'alert alert-info mt-2 d-flex justify-content-between align-items-center';
+                bloquePendiente.innerHTML = `
+                    <span>
+                        <i class="bi bi-box"></i> 
+                        Bloque "${folio}" agregado y combinado con el pedido
+                    </span>
+                `;
+                bloquesPendientesDiv.appendChild(bloquePendiente);
+                
+                // Limpiar solo el input, mantener los productos agregados
+                document.getElementById('inputFolioFacturaPedido').value = '';
+                divResultado.innerHTML = `
+                    <div class="alert alert-success mt-2">
+                        <i class="bi bi-plus-circle"></i>
+                        Bloque agregado. Puede seguir añadiendo más bloques.
+                    </div>`;
+            } else {
+                divResultado.innerHTML = `
+                    <div class="alert alert-success mt-2">
+                        <i class="bi bi-check-circle"></i>
+                        Se agregaron los productos al pedido correctamente.
+                    </div>`;
+                document.getElementById('inputFolioFacturaPedido').value = '';
+                bloquesPendientesDiv.innerHTML = ''; // Limpiar lista de pendientes
+            }
+            
+            // Actualizar interfaz siempre
+            renderPedidosActuales();
+            actualizarGraficas();
         } else {
             console.log("No se encontró en ninguna fuente");
             divResultado.innerHTML = `
                 <div class="alert alert-danger mt-2">
+                    <i class="bi bi-exclamation-triangle"></i>
                     No se encontró ningún bloque o factura con ese folio o nombre.
                 </div>`;
         }
@@ -1482,6 +1519,8 @@ async function agregarBloquePorFolioPedido() {
 }
 // Funciones auxiliares para procesar cada tipo de bloque
 async function procesarBloqueFacturas(datos) {
+    let seAgregaron = false;
+    
     for (const producto of datos) {
         const llanta = inventario.find(item => item.clave?.toString() === producto.Código?.toString());
         if (llanta) {
@@ -1489,11 +1528,13 @@ async function procesarBloqueFacturas(datos) {
             
             let pedidoExistente = pedidosEnCurso.find(p => p.clave === llanta.clave);
             if (pedidoExistente) {
+                // Actualizar cantidad existente
                 pedidoExistente.cantidad += cantidad;
                 pedidoExistente.peso = safeNum(getField(llanta,'peso')) * pedidoExistente.cantidad;
                 pedidoExistente.volumen = safeNum(getField(llanta,'volumen')) * pedidoExistente.cantidad;
                 pedidoExistente.valor = safeNum(getField(llanta,'valor')) * pedidoExistente.cantidad;
             } else {
+                // Agregar nueva llanta al pedido
                 pedidosEnCurso.push({
                     clave: llanta.clave,
                     descripcion: llanta.descripcion,
