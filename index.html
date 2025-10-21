@@ -554,7 +554,7 @@ document.addEventListener('DOMContentLoaded', function() {
 <nav>
     <button class="tablink active" data-tab="inventario">Inventario</button>
     <button class="tablink" data-tab="flota">Flota</button>
-    <button class="tablink" data-tab="facturas">Escaneo de traspasos o facturas</button> 
+    <button class="tablink" data-tab="facturas" onclick="actualizarBloquesFacturas()">Escaneo de traspasos o facturas</button> 
     <button class="tablink" data-tab="pedidos">Pedidos</button>
     <button class="tablink" data-tab="sugerencia-unidad">Sugerencia de Unidad</button>
     <button class="tablink" data-tab="pedidos-confirmados">Pedidos Confirmados</button>
@@ -5547,7 +5547,15 @@ function agregarBotonLimpiarCache() {
 }
 
 // Llamar a esta función cuando se carga la página
-document.addEventListener('DOMContentLoaded', agregarBotonLimpiarCache);
+document.addEventListener('DOMContentLoaded', () => {
+    agregarBotonLimpiarCache();
+    // Cargar los bloques de facturas al iniciar la página
+    actualizarBloquesFacturas().then(success => {
+        if (!success) {
+            console.error('No se pudieron cargar los bloques de facturas inicialmente');
+        }
+    });
+});
 // Agregar antes de facturaScanBtn.onclick (aproximadamente línea 1850)
 async function compressImage(canvas) {
     return new Promise((resolve) => {
@@ -5995,15 +6003,24 @@ function eliminarArchivoEscaneado(idx) {
 // Mostrar todos los bloques en la página
 // Modificar la función mostrarBloquesFacturas()
 function mostrarBloquesFacturas(filtro = '') {
+    console.log('Mostrando bloques de facturas, total:', bloquesFacturas?.length || 0);
+    
     const container = document.getElementById('facturaGroupsContainer');
+    if (!container) {
+        console.error('No se encontró el contenedor de facturas');
+        return;
+    }
     
     // Limpiar el contenedor primero
     container.innerHTML = '';
 
     if (!bloquesFacturas || bloquesFacturas.length === 0) {
+        console.log('No hay bloques de facturas para mostrar');
         container.innerHTML = '<div class="alert alert-info">No hay bloques de facturas guardados.</div>';
         return;
     }
+
+    console.log('Bloques a mostrar:', bloquesFacturas);
 
     // Eliminar duplicados basándose en el nombre del bloque
     const bloquesSinDuplicados = bloquesFacturas.reduce((acc, current) => {
@@ -6063,27 +6080,66 @@ function mostrarBloquesFacturas(filtro = '') {
 }
 async function actualizarBloquesFacturas() {
     try {
+        console.log('Iniciando actualización de bloques de facturas...');
+        
         const res = await fetch('https://sheetdb.io/api/v1/dm8cjigr13rib?sheet=facturas');
-        if (!res.ok) throw new Error('No se pudo cargar facturas');
+        if (!res.ok) throw new Error(`No se pudo cargar facturas. Status: ${res.status}`);
         
         const facturas = await res.json();
+        console.log('Datos recibidos de la hoja:', facturas);
+
+        if (!Array.isArray(facturas) || facturas.length === 0) {
+            console.log('No hay facturas para mostrar');
+            bloquesFacturas = [];
+            mostrarBloquesFacturas();
+            return true;
+        }
+
         bloquesFacturas = [];
         let grupos = {};
         
+        // Agrupar facturas por nombre/folio
         facturas.forEach(f => {
+            if (!f) return; // Ignorar registros nulos
+            
+            // Intentar obtener un identificador válido para el grupo
             const grupo = f.Nombre || f.Folio || f["Fecha de Emisión"] || 'Sin nombre';
-            if (!grupos[grupo]) grupos[grupo] = [];
+            console.log('Procesando factura para grupo:', grupo, f);
+            
+            if (!grupos[grupo]) {
+                grupos[grupo] = [];
+            }
             grupos[grupo].push(f);
         });
         
+        // Convertir grupos en bloques
         for (const nombre in grupos) {
-            bloquesFacturas.push({ nombre, datos: grupos[nombre] });
+            if (grupos[nombre].length > 0) {
+                bloquesFacturas.push({
+                    nombre,
+                    datos: grupos[nombre]
+                });
+            }
         }
         
+        console.log('Bloques procesados:', bloquesFacturas);
+        
+        // Actualizar la visualización
         mostrarBloquesFacturas();
         return true;
     } catch (error) {
         console.error('Error actualizando bloques:', error);
+        console.error('Stack trace:', error.stack);
+        // Mostrar mensaje de error en la interfaz
+        const container = document.getElementById('facturaGroupsContainer');
+        if (container) {
+            container.innerHTML = `
+                <div class="alert alert-danger">
+                    <i class="bi bi-exclamation-triangle"></i>
+                    Error al cargar los bloques: ${error.message}
+                </div>
+            `;
+        }
         return false;
     }
 }
