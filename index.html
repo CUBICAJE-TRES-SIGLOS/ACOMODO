@@ -3022,6 +3022,14 @@ function searchInventario() {
                 console.error('camionesDisponibles no es un array:', camionesDisponibles);
                 return { distribucion: [], volumenRestante: volumenTotal, pesoRestante: pesoTotal };
             }
+
+            // Filtrar camiones que ya están en pedidosConfirmados
+            camionesDisponibles = camionesDisponibles.filter(camion => {
+                return !pedidosConfirmados.some(pedido => 
+                    pedido.economico === camion.economico
+                );
+            });
+
             let distribucion = [];
             let volumenRestante = volumenTotal;
             let pesoRestante = pesoTotal;
