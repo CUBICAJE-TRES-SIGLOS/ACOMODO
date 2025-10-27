@@ -925,7 +925,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     </div>
                 </div>
             </div>
-            
+
             <div class="card mb-3">
             <div class="card-header d-flex justify-content-between align-items-center">
                 <h5 class="mb-0">Agregar Llantas al Cálculo</h5>
@@ -1062,7 +1062,18 @@ document.addEventListener('DOMContentLoaded', function() {
         </div>
     </div>
 
-    <!-- Esta sección redundante se elimina ya que existe otra sección de pedidos confirmados arriba -->
+    <!-- Pedidos Confirmados -->
+    <div id="pedidos-confirmados" class="tabcontent" style="max-width: 1200px;">
+        <h3>Pedidos Confirmados</h3>
+        <table id="tabla">
+            <thead>
+                <tr>
+                    <th>Camión</th>
+                    <th>Llantas</th>
+                    <th>Descripción</th>
+                    <th>Cantidad</th>
+                    <th>Total,Cantidad</th>
+                    <th>Línea</th>
                     <th>Volumen</th>
                     <th>Peso</th>
                     <th>Valor ($)</th>
@@ -1624,27 +1635,15 @@ async function procesarBloqueFacturas(datos) {
                 throw new Error(`Error al cargar pedidos confirmados: ${response.status}`);
             }
             const data = await response.json();
-            if (!Array.isArray(data)) {
-                throw new Error('Los datos recibidos no tienen el formato esperado');
-            }
-            
-            // Normalizar los datos para asegurar consistencia
+            // Normalizar los datos para asegurar consistencia con los nombres de columnas
             pedidosConfirmados = data.map(pedido => ({
-                Fecha: pedido['Fecha'] || '',
-                Unidad: pedido['Unidad'] || '',
-                Económico: pedido['Económico'] || pedido['Economico'] || '',
-                Nombre: pedido['Nombre'] || '',
-                Llantas: pedido['Llantas'] || '',
-                Descripcion: pedido['Descripcion'] || '',
-                Volumen: pedido['Volumen'] || '0',
-                Peso: pedido['Peso'] || '0',
-                ...pedido // mantener otros campos que puedan existir
+                ...pedido,
+                economico: pedido['Económico'] || pedido['Economico'] || pedido['economico'] || '', // Manejar diferentes variantes
+                unidad: pedido['Unidad'] || pedido['unidad'] || ''
             }));
-            
             actualizarTablaPedidosConfirmados();
         } catch (e) {
-            console.error('Error al cargar pedidos:', e);
-            alert('No se pudieron cargar los pedidos confirmados. Por favor, recarga la página.');
+            alert('No se pudieron cargar los pedidos confirmados: ' + e.message);
         }
     }
     async function cargarReservas() {
@@ -2585,14 +2584,6 @@ function searchInventario() {
                 throw new Error('Datos de pedido incompletos');
             }
 
-            // Asegurar que haya un nombre de pedido
-            if (!pedido.nombrePedido) {
-                pedido.nombrePedido = prompt('Por favor, ingrese un nombre para este pedido:', '');
-                if (!pedido.nombrePedido) {
-                    throw new Error('Es necesario proporcionar un nombre para el pedido');
-                }
-            }
-
             // Agrupar llantas por descripción
             const llantasPorTipo = pedido.detallesLlantas.reduce((grupos, llanta) => {
                 const tipo = llanta.descripcion;
@@ -2637,9 +2628,9 @@ function searchInventario() {
                 "Fecha": pedido.fecha,
                 "Unidad": pedido.unidad,
                 "Económico": pedido.economico,
-                "Nombre": pedido.nombrePedido,
                 "Llantas": totalLlantas.toString(),
                 "Descripcion": descripcionLlantas,
+                "Cantidad": cantidadesFormateadas,
                 "Volumen": volumenFormateado,
                 "Peso": pesoFormateado,
                 "Detalles": JSON.stringify(llantasPorTipo) // Guardamos los detalles completos por si son necesarios después
@@ -2729,14 +2720,10 @@ function searchInventario() {
     // Función para apartar una unidad y enviarla a confirmados
     async function apartarUnidad(unidadParam, llantas, volumenTotal, pesoTotal) {
         try {
-            // Solicitar nombre del pedido
-            const nombrePedido = prompt('Por favor, ingrese un nombre para este pedido:', '');
-            if (nombrePedido === null) {
-                return; // Usuario canceló la operación
-            }
-            if (nombrePedido.trim() === '') {
-                alert('Debe ingresar un nombre para el pedido');
-                return;
+            // Solicitar el nombre de la persona que hace el pedido
+            const nombrePedido = prompt("Por favor, ingrese el nombre de quien hace el pedido:");
+            if (!nombrePedido) {
+                throw new Error('Se requiere ingresar un nombre para el pedido');
             }
 
             // Si solo recibimos el código de la unidad, buscar la unidad completa en la flota
@@ -2766,21 +2753,30 @@ function searchInventario() {
             // Intentar obtener el número económico de todas las posibles propiedades
             const numeroEconomico = (unidad.economico || unidad.codigo || '').toString().trim();
             
+            // Validar que tengamos todos los datos necesarios
+            if (!numeroEconomico) {
+                throw new Error('No se pudo obtener el número económico de la unidad');
+            }
+
+            if (llantasBloque.length === 0) {
+                throw new Error('No se han agregado llantas al pedido');
+            }
+            
             console.log('Datos procesados de la unidad:', { nombreUnidad, numeroEconomico });
             
             // Preparar los datos exactamente como los necesita la hoja de cálculo
-            // Log para debug
             console.log('Enviando datos de la unidad:', {
                 nombre: nombreUnidad,
-                economico: numeroEconomico
+                economico: numeroEconomico,
+                solicitante: nombrePedido
             });
 
             const datosParaEnviar = {
                 data: [{
                     "Fecha": fecha,
                     "Unidad": nombreUnidad,
-                    "Económico": numeroEconomico, // Nombre exacto de la columna en la hoja de cálculo
-                    "Nombre": nombrePedido, // Nuevo campo para el nombre del pedido
+                    "Económico": numeroEconomico,
+                    "Nombre": nombrePedido,
                     "Llantas": llantasBloque.reduce((sum, l) => sum + (parseInt(l.cantidad) || 0), 0),
                     "Descripcion": llantasBloque.map(l => `${l.cantidad} x ${l.descripcion}`).join(', '),
                     "Volumen": Number(bloqueSeleccionado.volumenTotal || volumenTotal || 0).toFixed(2),
@@ -2830,10 +2826,7 @@ function searchInventario() {
                 const pedidoAEliminar = pedidosConfirmados[index];
                 
                 // Eliminar de SheetDB usando el número económico como identificador
-                const economico = pedidoAEliminar.Económico || pedidoAEliminar.Economico || pedidoAEliminar.economico;
-                console.log('Eliminando pedido con económico:', economico);
-                
-                const response = await fetch(`https://sheetdb.io/api/v1/7jn8op5xlxgu2/Económico/${economico}?sheet=confirmados`, {
+                const response = await fetch(`https://sheetdb.io/api/v1/7jn8op5xlxgu2/sheet=confirmados/economico/${pedidoAEliminar.economico}`, {
                     method: 'DELETE',
                     headers: {
                         'Content-Type': 'application/json'
@@ -2915,124 +2908,70 @@ function searchInventario() {
     // Función para buscar en pedidos confirmados
     function buscarPedidoConfirmado() {
         const busqueda = document.getElementById('busquedaConfirmados').value.toLowerCase();
-        mostrarPedidosConfirmados(busqueda);
-    }
-
-    function mostrarPedidosConfirmados(filtro = '') {
-        const tbody = document.getElementById('tablaPedidosConfirmados');
-        if (!tbody) {
-            console.error('No se encontró la tabla de pedidos confirmados');
-            return;
-        }
-        
-        tbody.innerHTML = '';
-        
-        if (!Array.isArray(pedidosConfirmados)) {
-            console.warn('No hay pedidos confirmados disponibles');
-            return;
-        }
-        
-        pedidosConfirmados.forEach((pedido, index) => {
-            if (filtro) {
-                const searchText = filtro.toLowerCase();
-                const economico = (pedido.Económico || pedido.Economico || '').toLowerCase();
-                const unidad = (pedido.Unidad || '').toLowerCase();
-                const nombre = (pedido.Nombre || '').toLowerCase();
-                if (!economico.includes(searchText) && 
-                    !unidad.includes(searchText) && 
-                    !nombre.includes(searchText)) {
-                    return;
-                }
-            }
-            
-            const tr = document.createElement('tr');
-            tr.innerHTML = `
-                <td>${pedido.Fecha || ''}</td>
-                <td>${pedido.Unidad || ''}</td>
-                <td>${pedido.Económico || pedido.Economico || ''}</td>
-                <td>${pedido.Nombre || ''}</td>
-                <td>${pedido.Llantas || ''}</td>
-                <td>${pedido.Descripcion || ''}</td>
-                <td>${pedido.Volumen || '0'} m³</td>
-                <td>${pedido.Peso || '0'} kg</td>
-                <td>
-                    <button class="btn btn-danger btn-sm" onclick="liberarUnidad(${index})">
-                        <i class="bi bi-x-circle"></i> Liberar
-                    </button>
-                </td>
-            `;
-            tbody.appendChild(tr);
-        });
+        actualizarTablaPedidosConfirmados(busqueda);
     }
 
     // Función para actualizar la tabla de pedidos confirmados
     function actualizarTablaPedidosConfirmados(filtro = '') {
         const tbody = document.getElementById('tablaPedidosConfirmados');
-        if (!tbody) {
-            console.error('No se encontró la tabla de pedidos confirmados');
-            return;
-        }
+        if (!tbody) return;
         tbody.innerHTML = '';
         
-        if (!Array.isArray(pedidosConfirmados)) {
-            console.error('No hay pedidos confirmados para mostrar');
-            return;
-        }
-
-        console.log('Actualizando tabla con pedidos:', pedidosConfirmados);
+        if (!Array.isArray(pedidosConfirmados)) return;
         
-        // Ordenar pedidos y filtrar según el criterio de búsqueda
-        const pedidosOrdenados = [...pedidosConfirmados]
-            .filter(pedido => {
-                if (!filtro) return true;
-                const economico = (pedido.Económico || pedido.Economico || pedido.economico || '').toLowerCase();
-                const unidad = (pedido.Unidad || pedido.unidad || '').toLowerCase();
-                const nombre = (pedido.Nombre || pedido.nombre || '').toLowerCase();
-                return economico.includes(filtro.toLowerCase()) || 
-                       unidad.includes(filtro.toLowerCase()) ||
-                       nombre.includes(filtro.toLowerCase());
-            })
-            .sort((a, b) => {
-                // Ordenar por fecha descendente (más reciente primero)
-                const fechaA = a.Fecha || a.fecha || '';
-                const fechaB = b.Fecha || b.fecha || '';
-                return fechaB.localeCompare(fechaA);
-            });
+        // Ordenar pedidos: primero los que coinciden con la búsqueda
+        const pedidosOrdenados = [...pedidosConfirmados].sort((a, b) => {
+            const aEconomico = (a.Económico || a.Economico || a.economico || '').toLowerCase();
+            const bEconomico = (b.Económico || b.Economico || b.economico || '').toLowerCase();
+            const aMatch = aEconomico.includes(filtro.toLowerCase());
+            const bMatch = bEconomico.includes(filtro.toLowerCase());
+            if (aMatch && !bMatch) return -1;
+            if (!aMatch && bMatch) return 1;
+            return 0;
+        });
         
         pedidosOrdenados.forEach((pedido, index) => {
-            const tr = document.createElement('tr');
-            
-            // Extraer y formatear valores
-            const fecha = pedido.Fecha || pedido.fecha || '';
+             // Asegurarse de que los campos existan y tengan el formato correcto
+             // Formatear la fecha si es un número
+             let fecha = pedido.Fecha || pedido.fecha || '';
+             if (!isNaN(fecha)) {
+                 // Si la fecha es un número, la convertimos a objeto Date y la formateamos
+                 const fechaObj = new Date(fecha);
+                 if (!isNaN(fechaObj.getTime())) {
+                     fecha = obtenerFechaFormateada();
+                 }
+            }
             const unidad = pedido.Unidad || pedido.unidad || '';
             const economico = pedido.Económico || pedido.Economico || pedido.economico || '';
             const nombre = pedido.Nombre || pedido.nombre || '';
-            const llantas = pedido.Llantas || pedido.llantas || '';
+            const llantas = pedido.Llantas || pedido.llantas || '0';
             const descripcion = pedido.Descripcion || pedido.descripcion || '';
-            const volumen = pedido.Volumen || pedido.volumen || '0';
-            const peso = pedido.Peso || pedido.peso || '0';
-            
-            // Construir la fila con el orden correcto
+            const volumen = pedido.Volumen || pedido.volumen || '0.00';
+            const peso = pedido.Peso || pedido.peso || '0.00';
+
+            console.log('Mostrando pedido:', pedido);
+            const tr = document.createElement('tr');
+            // Formatear la descripción con viñetas
+            const descripcionFormateada = formatearDescripcionConVinetas(pedido.Descripcion || pedido.descripcion);
+    
+            // Crear la celda de descripción con estilo
             tr.innerHTML = `
-                <td>${fecha}</td>
+                <td class="text-center">${fecha}</td>
                 <td>${unidad}</td>
-                <td>${economico}</td>
+                <td class="text-center">${economico}</td>
                 <td>${nombre}</td>
-                <td>${llantas}</td>
-                <td>${descripcion}</td>
-                <td>${volumen} m³</td>
-                <td>${peso} kg</td>
-                <td>
+                <td class="text-center">${llantas}</td>
+                <td style="white-space: pre-line; line-height: 1.5;">${descripcionFormateada}</td>
+                <td class="text-end">${volumen} m³</td>
+                <td class="text-end">${peso} kg</td>
+                <td class="text-center">
                     <button class="btn btn-danger btn-sm" onclick="liberarUnidad(${index})">
                         <i class="bi bi-x-circle"></i> Liberar
-                    </button>
-                </td>
-            `;
-            
-            tbody.appendChild(tr);
+                   </button>
+              </td>
+         `;
+         tbody.appendChild(tr);
         });
-        
-
     }
 
     // Función para verificar si una unidad está apartada
@@ -5462,10 +5401,11 @@ async function aceptarPedido() {
     }
 
     // -- Renderizar pedidos confirmados --
-// Esta función está obsoleta y se reemplaza por actualizarTablaPedidosConfirmados
 function renderPedidosConfirmados() {
-    actualizarTablaPedidosConfirmados();
-}
+    const tbody = document.querySelector('#tabla tbody');
+    tbody.innerHTML = '';
+    pedidosConfirmados.forEach((pedido, idx) => {
+        const tr = document.createElement('tr');
         
         // Separar las descripciones y cantidades
         const descripciones = pedido.Descripcion ? pedido.Descripcion.split(' || ') : [];
@@ -5478,18 +5418,13 @@ function renderPedidosConfirmados() {
         }).join('');
 
         tr.innerHTML = `
-            <td>${pedido.Fecha || ''}</td>
             <td>${pedido.Unidad || pedido.camion || ''}</td>
-            <td>${pedido.Economico || pedido.Económico || ''}</td>
-            <td>${pedido.Nombre || ''}</td>
             <td>${pedido.Llantas || ''}</td>
             <td>
                 <ul style="padding-left:18px;margin:0;list-style-type:none;">
                     ${detallesLlantas}
                 </ul>
             </td>
-            <td>${pedido.Volumen || ''} m³</td>
-            <td>${pedido.Peso || ''} kg</td>
             <td>
                 <ul style="padding-left:18px;margin:0;">
                     ${cantidades.map(q => `<li style="text-align:left;">${q.trim()} unidades</li>`).join('')}
@@ -5506,8 +5441,8 @@ function renderPedidosConfirmados() {
                 <button onclick="cancelarPedido(${idx})" class="btn btn-sm btn-danger">Quitar</button>
             </td>`;
         tbody.appendChild(tr);
-    
-
+    }); 
+}
     function cancelarPedido(idx) {
         if (confirm('¿Seguro que desea cancelar este pedido?')) {
             const pedidoACancelar = pedidosConfirmados[idx];
