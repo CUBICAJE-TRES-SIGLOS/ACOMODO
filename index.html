@@ -3087,10 +3087,26 @@ function searchInventario() {
                 return false;
             }
 
-            const codigoUnidad = String(unidad.codigo || unidad.economico).trim();
+            // Normalizar el código de la unidad (convertir a string y eliminar espacios)
+            const codigoUnidad = String(unidad.codigo || unidad.economico).trim().toLowerCase();
+            
+            // Buscar si la unidad está en pedidos confirmados
             const yaEstaConfirmada = pedidosConfirmados.some(pedido => {
-                const pedidoEconomico = String(pedido['Económico'] || pedido.Economico || pedido.economico || '').trim();
-                return pedidoEconomico === codigoUnidad;
+                // Normalizar el código del pedido
+                const pedidoEconomico = String(
+                    pedido['Económico'] || 
+                    pedido.Economico || 
+                    pedido.economico || 
+                    pedido.económico || 
+                    pedido.codigo || 
+                    ''
+                ).trim().toLowerCase();
+                
+                const coincide = pedidoEconomico === codigoUnidad;
+                if (coincide) {
+                    console.log(`Unidad ${codigoUnidad} está en pedidos confirmados`);
+                }
+                return coincide;
             });
             
             if (!yaEstaConfirmada) {
@@ -3102,12 +3118,20 @@ function searchInventario() {
 
         console.log('Unidades disponibles encontradas:', unidadesDisponibles.length);
 
-        // Si no hay unidades disponibles, mostrar mensaje
+        // Si no hay unidades disponibles o adecuadas, mostrar mensaje
         if (unidadesDisponibles.length === 0) {
             contenedorResultado.innerHTML = `
                 <div class="alert alert-warning">
                     <i class="bi bi-exclamation-triangle"></i>
-                    No hay unidades disponibles en este momento. Todas las unidades están asignadas.
+                    <h5>No hay unidades disponibles adecuadas</h5>
+                    <p>Esto puede deberse a:</p>
+                    <ul>
+                        <li>Todas las unidades están asignadas a otros pedidos</li>
+                        <li>Las unidades disponibles no tienen suficiente capacidad para este pedido</li>
+                        <li>El pedido requiere más capacidad de la que tienen las unidades individuales</li>
+                    </ul>
+                    <p>Volumen necesario: ${volumenTotal.toFixed(2)} m³</p>
+                    <p>Peso necesario: ${pesoTotal.toFixed(2)} kg</p>
                 </div>
             `;
             contenedorResultado.classList.remove('d-none');
@@ -3279,6 +3303,25 @@ function searchInventario() {
         let camionesDisponibles = flota
             .filter(camion => {
                 try {
+                    // Primero verificar si está en pedidos confirmados
+                    const codigoUnidad = String(camion.codigo || camion.economico).trim().toLowerCase();
+                    const estaConfirmada = pedidosConfirmados.some(pedido => {
+                        const pedidoEconomico = String(
+                            pedido['Económico'] || 
+                            pedido.Economico || 
+                            pedido.economico || 
+                            pedido.económico || 
+                            pedido.codigo || 
+                            ''
+                        ).trim().toLowerCase();
+                        return pedidoEconomico === codigoUnidad;
+                    });
+
+                    if (estaConfirmada) {
+                        console.log('Unidad excluida por estar confirmada:', codigoUnidad);
+                        return false;
+                    }
+
                     // Verificar que el camión tenga datos válidos
                     if (!camion.volumen || !camion["capacidad de carga (kg)"]) {
                         console.log('Camión sin datos completos:', camion);
@@ -3300,14 +3343,20 @@ function searchInventario() {
                     camion.volumenNum = volumenCamion;
                     camion.capacidadCargaNum = capacidadCarga;
                     
-                    // Un camión es viable si tiene capacidad mayor a cero
-                    // Ya no verificamos si puede llevar toda la carga aquí
-                    const esViable = volumenCamion > 0 && capacidadCarga > 0;
+                    // Verificar si el camión puede manejar al menos el 70% del pedido
+                    const puedeVolumen = volumenCamion >= volumenTotal * 0.7;
+                    const puedePeso = capacidadCarga >= pesoTotal * 0.7;
+                    const esViable = puedeVolumen && puedePeso;
                     
                     if (esViable) {
-                        console.log('Camión disponible:', camion.economico, 
+                        console.log('Camión viable:', camion.economico, 
                             'Capacidad:', volumenCamion.toFixed(2), 'm³,', 
-                            capacidadCarga.toFixed(2), 'kg');
+                            capacidadCarga.toFixed(2), 'kg',
+                            'Puede manejar:', 
+                            (volumenCamion/volumenTotal*100).toFixed(1) + '% del volumen,',
+                            (capacidadCarga/pesoTotal*100).toFixed(1) + '% del peso');
+                    } else {
+                        console.log('Camión descartado por capacidad insuficiente:', camion.economico);
                     }
                     
                     return esViable;
@@ -3317,10 +3366,12 @@ function searchInventario() {
                 }
             })
             .map(camion => {
-                // Usar los valores numéricos ya convertidos
-                const porcentajeVolumen = (volumenTotal / camion.volumenNum) * 100;
-                const porcentajePeso = (pesoTotal / camion.capacidadCargaNum) * 100;
-                const utilizacionPromedio = (porcentajeVolumen + porcentajePeso) / 2;
+                // Calcular los porcentajes correctamente (volumen usado / capacidad total)
+                const porcentajeVolumen = Math.min((volumenTotal / camion.volumenNum) * 100, 100);
+                const porcentajePeso = Math.min((pesoTotal / camion.capacidadCargaNum) * 100, 100);
+                const utilizacionPromedio = Math.min((porcentajeVolumen + porcentajePeso) / 2, 100);
+                
+                console.log(`Unidad ${camion.economico}: Vol ${porcentajeVolumen.toFixed(1)}%, Peso ${porcentajePeso.toFixed(1)}%, Promedio ${utilizacionPromedio.toFixed(1)}%`);
                 
                 return {
                     ...camion,
@@ -7283,3 +7334,4 @@ document.querySelector('button[data-tab="facturas"]').addEventListener('click', 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
+
