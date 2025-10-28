@@ -3132,17 +3132,33 @@ function searchInventario() {
             let volumenRestante = volumenTotal;
             let pesoRestante = pesoTotal;
             
-            // Ordenamos los camiones por capacidad, pero ahora consideramos diferentes tipos
+            // Ordenamos los camiones priorizando unidades más grandes y eficientes
             let camionesOrdenados = [...camionesDisponibles].sort((a, b) => {
-                // Primero ordenamos por capacidad total
-                const capTotalA = b.volumenNum + b.capacidadCargaNum;
-                const capTotalB = a.volumenNum + a.capacidadCargaNum;
-                if (capTotalA !== capTotalB) return capTotalA - capTotalB;
+                // Si alguno puede llevar toda la carga, lo priorizamos
+                const aLlevaTodo = a.volumenNum >= volumenTotal && a.capacidadCargaNum >= pesoTotal;
+                const bLlevaTodo = b.volumenNum >= volumenTotal && b.capacidadCargaNum >= pesoTotal;
                 
-                // Si son similares en capacidad, preferimos el más eficiente para el volumen actual
-                const eficienciaA = Math.min(volumenTotal / b.volumenNum, pesoTotal / b.capacidadCargaNum);
-                const eficienciaB = Math.min(volumenTotal / a.volumenNum, pesoTotal / a.capacidadCargaNum);
-                return eficienciaA - eficienciaB;
+                if (aLlevaTodo !== bLlevaTodo) {
+                    return aLlevaTodo ? -1 : 1;
+                }
+                
+                // Calculamos el porcentaje que cada unidad puede llevar
+                const capacidadVolumenA = Math.min(1, volumenTotal / a.volumenNum);
+                const capacidadVolumenB = Math.min(1, volumenTotal / b.volumenNum);
+                const capacidadPesoA = Math.min(1, pesoTotal / a.capacidadCargaNum);
+                const capacidadPesoB = Math.min(1, pesoTotal / b.capacidadCargaNum);
+                
+                // Calculamos un puntaje basado en capacidad y eficiencia
+                const puntajeA = Math.min(capacidadVolumenA, capacidadPesoA) * a.volumenNum;
+                const puntajeB = Math.min(capacidadVolumenB, capacidadPesoB) * b.volumenNum;
+                
+                // Priorizamos unidades más grandes cuando la diferencia de eficiencia es pequeña
+                const diferenciaPuntaje = Math.abs(puntajeA - puntajeB);
+                if (diferenciaPuntaje / Math.max(puntajeA, puntajeB) < 0.2) {
+                    return b.volumenNum - a.volumenNum;
+                }
+                
+                return puntajeB - puntajeA;
             });
             
             while (volumenRestante > 0 || pesoRestante > 0) {
@@ -3150,18 +3166,28 @@ function searchInventario() {
                 let mejorEficiencia = 0;
                 let mejorCombinacion = null;
                 
-                // Primera pasada: intentar encontrar un camión que pueda llevar toda la carga
+                // Primera pasada: intentar encontrar un camión que pueda llevar toda o la mayoría de la carga
                 for (const camion of camionesOrdenados) {
-                    if (camion.volumenNum >= volumenRestante && camion.capacidadCargaNum >= pesoRestante) {
-                        const eficienciaVolumen = volumenRestante / camion.volumenNum;
-                        const eficienciaPeso = pesoRestante / camion.capacidadCargaNum;
+                    const volumenPosible = Math.min(volumenRestante, camion.volumenNum);
+                    const pesoPosible = Math.min(pesoRestante, camion.capacidadCargaNum);
+                    
+                    // Verificar si este camión puede llevar una parte significativa
+                    const porcentajeVolumen = volumenPosible / volumenRestante;
+                    const porcentajePeso = pesoPosible / pesoRestante;
+                    const porcentajeTotal = Math.min(porcentajeVolumen, porcentajePeso);
+                    
+                    // Si puede llevar al menos el 70% de la carga restante, lo consideramos
+                    if (porcentajeTotal >= 0.7) {
+                        const eficienciaVolumen = volumenPosible / camion.volumenNum;
+                        const eficienciaPeso = pesoPosible / camion.capacidadCargaNum;
                         const eficienciaPromedio = (eficienciaVolumen + eficienciaPeso) / 2;
                         
-                        if (eficienciaPromedio > 0.7) { // Si es más del 70% eficiente, lo usamos
+                        // Aceptamos si la eficiencia es mayor al 40% (más permisivo)
+                        if (eficienciaPromedio > 0.4) {
                             mejorCamion = {
                                 ...camion,
-                                volumenAsignado: volumenRestante,
-                                pesoAsignado: pesoRestante,
+                                volumenAsignado: volumenPosible,
+                                pesoAsignado: pesoPosible,
                                 eficiencia: eficienciaPromedio * 100
                             };
                             break;
@@ -3308,22 +3334,25 @@ function searchInventario() {
         const distribucion = distribuirCargaEnCamiones(volumenTotal, pesoTotal, camionesDisponibles);
 
         if (distribucion.distribucion.length === 0) {
-            // Ordenar unidades por capacidad total y eficiencia
+            // Ordenar unidades priorizando las más grandes y eficientes
             let unidadesOrdenadas = [...unidadesDisponibles]
-                .sort((a, b) => {
-                    // Primero ordenar por capacidad total
-                    const capA = a.volumenNum + a.capacidadCargaNum;
-                    const capB = b.volumenNum + b.capacidadCargaNum;
+                .map(unidad => {
+                    // Calcular capacidad y eficiencia potencial
+                    const capacidadTotal = unidad.volumenNum + unidad.capacidadCargaNum;
+                    const eficienciaPotencial = Math.min(
+                        unidad.volumenNum / Math.max(volumenTotal / 2, 1), 
+                        unidad.capacidadCargaNum / Math.max(pesoTotal / 2, 1)
+                    );
+                    // Penalizar unidades muy pequeñas
+                    const penalizacionTamaño = unidad.volumenNum < volumenTotal / 4 ? 0.5 : 1;
                     
-                    // Si las capacidades son similares (dentro del 10%), ordenar por eficiencia
-                    if (Math.abs(capA - capB) / Math.max(capA, capB) < 0.1) {
-                        const eficienciaA = Math.min(a.volumenNum / volumenTotal, a.capacidadCargaNum / pesoTotal);
-                        const eficienciaB = Math.min(b.volumenNum / volumenTotal, b.capacidadCargaNum / pesoTotal);
-                        return eficienciaB - eficienciaA;
-                    }
-                    
-                    return capB - capA;
-                });
+                    return {
+                        ...unidad,
+                        capacidadTotal,
+                        puntuacion: capacidadTotal * eficienciaPotencial * penalizacionTamaño
+                    };
+                })
+                .sort((a, b) => b.puntuacion - a.puntuacion);
 
             let distribucionMultiple = [];
             let volumenRestante = volumenTotal;
@@ -3450,7 +3479,7 @@ function searchInventario() {
                                                 "nombre": "${camion.unidad}",
                                                 "codigo": "${camion.economico}"
                                             }, 
-                                            ${JSON.stringify(llantasAgregadas)}, 
+                                            ${JSON.stringify(llantasAgregadas)},        
                                             ${camion.volumenAsignado}, 
                                             ${camion.pesoAsignado}
                                         )'>
