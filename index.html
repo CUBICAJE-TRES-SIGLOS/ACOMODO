@@ -3270,19 +3270,18 @@ function searchInventario() {
                         return false;
                     }
                     
-                    // Calcular porcentajes de uso
-                    const porcentajeVolumen = (volumenTotal / volumenCamion) * 100;
-                    const porcentajePeso = (pesoTotal / capacidadCarga) * 100;
-                    
-                    // Guardar los valores numéricos en el objeto
+                    // Guardar los valores numéricos en el objeto para uso posterior
                     camion.volumenNum = volumenCamion;
                     camion.capacidadCargaNum = capacidadCarga;
                     
-                    // El camión es viable si puede llevar la carga
-                    const esViable = porcentajeVolumen <= 100 && porcentajePeso <= 100;
+                    // Un camión es viable si tiene capacidad mayor a cero
+                    // Ya no verificamos si puede llevar toda la carga aquí
+                    const esViable = volumenCamion > 0 && capacidadCarga > 0;
                     
                     if (esViable) {
-                        console.log('Camión viable encontrado:', camion.economico);
+                        console.log('Camión disponible:', camion.economico, 
+                            'Capacidad:', volumenCamion.toFixed(2), 'm³,', 
+                            capacidadCarga.toFixed(2), 'kg');
                     }
                     
                     return esViable;
@@ -3309,19 +3308,21 @@ function searchInventario() {
         const distribucion = distribuirCargaEnCamiones(volumenTotal, pesoTotal, camionesDisponibles);
 
         if (distribucion.distribucion.length === 0) {
-            // Intentar sugerir múltiples unidades de las disponibles
-            let unidadesOrdenadas = unidadesDisponibles
-                .filter(camion => {
-                    const volumenNum = parseFloat(camion.volumen);
-                    const pesoNum = parseFloat(camion["capacidad de carga (kg)"]);
-                    return !isNaN(volumenNum) && !isNaN(pesoNum) && volumenNum > 0 && pesoNum > 0;
-                })
+            // Ordenar unidades por capacidad total y eficiencia
+            let unidadesOrdenadas = [...unidadesDisponibles]
                 .sort((a, b) => {
-                    const volA = parseFloat(a.volumen);
-                    const volB = parseFloat(b.volumen);
-                    const pesoA = parseFloat(a["capacidad de carga (kg)"]);
-                    const pesoB = parseFloat(b["capacidad de carga (kg)"]);
-                    return (volB + pesoB) - (volA + pesoA);
+                    // Primero ordenar por capacidad total
+                    const capA = a.volumenNum + a.capacidadCargaNum;
+                    const capB = b.volumenNum + b.capacidadCargaNum;
+                    
+                    // Si las capacidades son similares (dentro del 10%), ordenar por eficiencia
+                    if (Math.abs(capA - capB) / Math.max(capA, capB) < 0.1) {
+                        const eficienciaA = Math.min(a.volumenNum / volumenTotal, a.capacidadCargaNum / pesoTotal);
+                        const eficienciaB = Math.min(b.volumenNum / volumenTotal, b.capacidadCargaNum / pesoTotal);
+                        return eficienciaB - eficienciaA;
+                    }
+                    
+                    return capB - capA;
                 });
 
             let distribucionMultiple = [];
