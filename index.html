@@ -3438,7 +3438,10 @@ function searchInventario() {
                     <div class="col-md-6 mb-3">
                         <div class="card">
                             <div class="card-header bg-info text-white d-flex justify-content-between align-items-center">
-                                <h6 class="mb-0">Unidad ${index + 1}: ${camion.unidad} (Eco. ${camion.economico})</h6>
+                                <div>
+                                    <h6 class="mb-0">Unidad ${index + 1}: ${camion.unidad} (Eco. ${camion.economico})</h6>
+                                    <small class="text-white">Llantas asignadas: ${Math.floor(cantidadTotalLlantas * (camion.volumenAsignado / volumenTotal))} unidades</small>
+                                </div>
                                 <button class="btn btn-light btn-sm" 
                                         onclick='apartarUnidad(
                                             {
@@ -3455,7 +3458,13 @@ function searchInventario() {
                                 </button>
                             </div>
                             <div class="card-body">
-                                <div class="mb-2">
+                                <div class="mb-3">
+                                    <strong>Llantas asignadas:</strong>
+                                    <div class="alert alert-light py-1 mb-2">
+                                        <i class="bi bi-box-seam"></i>
+                                        ${Math.floor(cantidadTotalLlantas * (camion.volumenAsignado / volumenTotal))} llantas
+                                        (${((camion.volumenAsignado / volumenTotal) * 100).toFixed(1)}% del total)
+                                    </div>
                                     <strong>Volumen asignado:</strong>
                                     <div class="progress mb-1" style="height: 20px;">
                                         <div class="progress-bar bg-primary" 
