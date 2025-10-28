@@ -3157,7 +3157,10 @@ function searchInventario() {
             let pesoRestante = pesoTotal;
             
             // Ordenamos los camiones priorizando unidades más grandes y eficientes
-            let camionesOrdenados = [...camionesDisponibles].sort((a, b) => {
+            let camionesOrdenados = [...new Map(camionesDisponibles.map(item => [item.economico, item])).values()];
+            
+            // Ahora ordenamos los camiones únicos
+            camionesOrdenados.sort((a, b) => {
                 // Si alguno puede llevar toda la carga, lo priorizamos
                 const aLlevaTodo = a.volumenNum >= volumenTotal && a.capacidadCargaNum >= pesoTotal;
                 const bLlevaTodo = b.volumenNum >= volumenTotal && b.capacidadCargaNum >= pesoTotal;
@@ -3176,13 +3179,8 @@ function searchInventario() {
                 const puntajeA = Math.min(capacidadVolumenA, capacidadPesoA) * a.volumenNum;
                 const puntajeB = Math.min(capacidadVolumenB, capacidadPesoB) * b.volumenNum;
                 
-                // Priorizamos unidades más grandes cuando la diferencia de eficiencia es pequeña
-                const diferenciaPuntaje = Math.abs(puntajeA - puntajeB);
-                if (diferenciaPuntaje / Math.max(puntajeA, puntajeB) < 0.2) {
-                    return b.volumenNum - a.volumenNum;
-                }
-                
-                return puntajeB - puntajeA;
+                // Priorizamos unidades más grandes
+                return b.volumenNum - a.volumenNum;
             });
             
             while (volumenRestante > 0 || pesoRestante > 0) {
@@ -3405,13 +3403,27 @@ function searchInventario() {
                 })
                 .sort((a, b) => b.puntuacion - a.puntuacion);
 
+            console.log('Iniciando distribución con unidades únicas:', 
+                unidadesOrdenadas.map(u => u.economico).join(', '));
+            
             let distribucionMultiple = [];
             let volumenRestante = volumenTotal;
             let pesoRestante = pesoTotal;
             let llantasRestantes = cantidadTotalLlantas;
+            let unidadesUsadas = new Set(); // Para rastrear unidades ya utilizadas
 
             for (const unidad of unidadesOrdenadas) {
-                if (volumenRestante <= 0 && pesoRestante <= 0) break;
+                // Verificar si la unidad ya fue usada
+                if (unidadesUsadas.has(unidad.economico)) {
+                    console.log('Unidad ya utilizada, saltando:', unidad.economico);
+                    continue;
+                }
+
+                // Si ya no hay carga por distribuir, salimos del ciclo
+                if (volumenRestante <= 0.01 && pesoRestante <= 0.01) {
+                    console.log('No hay más carga por distribuir');
+                    break;
+                }
 
                 const volumenUnidad = parseFloat(unidad.volumen);
                 const pesoUnidad = parseFloat(unidad["capacidad de carga (kg)"]);
@@ -3432,6 +3444,10 @@ function searchInventario() {
                         eficiencia: porcentajeCapacidad,
                         llantasEstimadas: Math.floor(llantasRestantes * (volumenAsignable / volumenRestante))
                     });
+
+                    // Marcar la unidad como usada
+                    unidadesUsadas.add(unidad.economico);
+                    console.log('Unidad agregada a la distribución:', unidad.economico);
 
                     volumenRestante -= volumenAsignable;
                     pesoRestante -= pesoAsignable;
@@ -7334,4 +7350,3 @@ document.querySelector('button[data-tab="facturas"]').addEventListener('click', 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
-
