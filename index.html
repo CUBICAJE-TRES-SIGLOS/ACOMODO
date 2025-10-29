@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -54,44 +55,36 @@
            display: inline-block; /* Asegura que los botones se muestren en línea */
      }
     section {
-        background: rgba(255,255,255,0.55);
-            border-radius: 16px;
-            margin: 32px auto 16px auto;
-            max-width: 1200px;
-            box-shadow: 0 8px 32px rgba(72,144,81,0.13);
-            padding: 28px 22px;
-        }
-        header img {
-            height: 44px;
-            margin-right: 12px;
-            opacity: 0.7;
-        }
-        nav {
-            display: flex;
-            background: #b0dab9e6;
-        }
-        nav button {
-            flex: 1;
-            padding: 12px 0;
-            color: #24412b;
-            background: transparent;
-            border: none;
-            cursor: pointer;
-            font-weight: bold;
-            letter-spacing: 1px;
-            transition: background 0.3s;
-        }
-        nav button:hover, nav button.active {
-            background: #d9efe0;
-        }
-        section {
-            background: rgba(255,255,255,0.65); /* Menos opaco, se ve más la imagen */
-            border-radius: 16px;
-            margin: 32px auto 16px auto;
-            max-width: 1200px;
-            box-shadow: 0 8px 32px rgba(72,144,81,0.13);
-            padding: 28px 22px;
-        }
+        background: rgba(255,255,255,0.65); /* Menos opaco, se ve más la imagen */
+        border-radius: 16px;
+        margin: 32px auto 16px auto;
+        max-width: 1200px;
+        box-shadow: 0 8px 32px rgba(72,144,81,0.13);
+        padding: 28px 22px;
+    }
+    header img {
+        height: 44px;
+        margin-right: 12px;
+        opacity: 0.7;
+    }
+    nav {
+        display: flex;
+        background: #b0dab9e6;
+    }
+    nav button {
+        flex: 1;
+        padding: 12px 0;
+        color: #24412b;
+        background: transparent;
+        border: none;
+        cursor: pointer;
+        font-weight: bold;
+        letter-spacing: 1px;
+        transition: background 0.3s;
+    }
+    nav button:hover, nav button.active {
+        background: #d9efe0;
+    }
         .tabcontent {
             display: none;
             background: transparent;
@@ -217,7 +210,7 @@
         .eficiencia-alta { background-color: #28a745; color: white; }
         .eficiencia-media { background-color: #ffc107; color: black; }
         .eficiencia-baja { background-color: #dc3545; color: white; }
-        /* Modal base styles */
+        /* Modal and Form Styles */
         .modal {
             display: none; 
             position: fixed; 
@@ -225,27 +218,32 @@
             left: 0; top: 0;
             width: 100%; height: 100%;
             overflow: auto;
-            background-color: rgba(0,0,0,0.4); /* fondo semitransparente */
+            background-color: rgba(0,0,0,0.4);
+            animation: fadeIn 0.3s;
         }
         .modal-content {
             background-color: #fefefe;
-            margin: 5% auto; /* centrado vertical */
+            margin: 2% auto;
             padding: 20px;
             border-radius: 12px;
             width: 90%;
             max-width: 600px;
             position: relative;
             box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+            animation: slideIn 0.3s;
         }
         .close {
             position: absolute;
             right: 20px;
-            top: 10px;
+            top: 15px;
             font-size: 28px;
             font-weight: bold;
             cursor: pointer;
-            color: #555;
-            user-select: none;
+            color: #666;
+            transition: color 0.3s;
+        }
+        .close:hover {
+            color: #000;
         }
         form.add-form label {
             display: block;
@@ -253,7 +251,8 @@
             font-weight: bold;
             color: #35672b;
         }
-        form.add-form input[type=text], form.add-form input[type=number] {
+        form.add-form input[type=text], 
+        form.add-form input[type=number] {
             width: 100%;
             padding: 8px 10px;
             border: 1px solid #a3d087;
@@ -284,12 +283,8 @@
             font-size: 15px;
             min-height: 20px;
         }
-        .msg.success {
-            color: green;
-        } 
-        .msg.error {
-            color: red;
-        }
+        .msg.success { color: green; }
+        .msg.error { color: red; }
         /* Agregar dentro de la sección <style> existente */
         .alerta-flotante {
             position: fixed;
@@ -585,49 +580,69 @@ async function inicializarAplicacion() {
     }
 }
 
+// App Initialization
 document.addEventListener('DOMContentLoaded', function() {
-    // Inicializar la aplicación
-    inicializarAplicacion();
-    
-    // Función para mostrar instrucciones
-    window.mostrarInstrucciones = function() {
-        document.getElementById('modalInstrucciones').style.display = 'block';
+    // Initialize app core
+    const appInitializer = {
+        init: async function() {
+            await inicializarAplicacion();
+            this.setupInstructions();
+            this.setupHelpButton();
+            this.setupEventListeners();
+        },
+
+        setupInstructions: function() {
+            window.mostrarInstrucciones = () => {
+                document.getElementById('modalInstrucciones').style.display = 'block';
+            };
+
+            window.cerrarInstrucciones = () => {
+                document.getElementById('modalInstrucciones').style.display = 'none';
+                localStorage.setItem('instruccionesVistas', 'true');
+            };
+
+            // Show instructions modal with delay
+            setTimeout(mostrarInstrucciones, 500);
+        },
+
+        setupHelpButton: function() {
+            const btnAyuda = document.createElement('button');
+            btnAyuda.innerHTML = '❔ Ayuda';
+            btnAyuda.className = 'help-button';
+            btnAyuda.onclick = mostrarInstrucciones;
+            
+            // Add button styles via CSS class instead of inline styles
+            const style = document.createElement('style');
+            style.textContent = `
+                .help-button {
+                    position: fixed;
+                    bottom: 20px;
+                    left: 20px;
+                    background: #489051;
+                    color: white;
+                    border: none;
+                    border-radius: 5px;
+                    padding: 10px 15px;
+                    cursor: pointer;
+                    z-index: 999;
+                    transition: all 0.3s ease;
+                }
+                .help-button:hover {
+                    transform: scale(1.1);
+                    background: #5aad64;
+                }
+            `;
+            document.head.appendChild(style);
+            document.body.appendChild(btnAyuda);
+        },
+
+        setupEventListeners: function() {
+            // Add any additional event listeners here
+        }
     };
 
-    // Función para cerrar instrucciones
-    window.cerrarInstrucciones = function() {
-        document.getElementById('modalInstrucciones').style.display = 'none';
-        localStorage.setItem('instruccionesVistas', 'true');
-    };
-
-    // Mostrar el modal automáticamente al cargar la página
-    // (sin verificar si ya fue visto antes)
-    setTimeout(mostrarInstrucciones, 500); // Pequeño retraso para asegurar que todo esté cargado
-    
-    // Agregar botón de ayuda
-    const btnAyuda = document.createElement('button');
-    btnAyuda.innerHTML = '❔ Ayuda';
-    btnAyuda.style.cssText = `
-        position: fixed;
-        bottom: 20px;
-        left: 20px;
-        background: #489051;
-        color: white;
-        border: none;
-        border-radius: 5px;
-        padding: 10px 15px;
-        cursor: pointer;
-        z-index: 999;
-        transition: all 0.3s ease;
-    `;
-    btnAyuda.onmouseover = function() {
-        this.style.transform = 'scale(1.1)';
-    };
-    btnAyuda.onmouseout = function() {
-        this.style.transform = 'scale(1)';
-    };
-    btnAyuda.onclick = mostrarInstrucciones;
-    document.body.appendChild(btnAyuda);
+    // Initialize the application
+    appInitializer.init();
 });
 </script>    
 
@@ -1707,41 +1722,44 @@ async function procesarBloqueFacturas(datos) {
     actualizarGraficas();
 }
 
-    // Abrir y cerrar modales
-    function openModal(id) {
-        document.getElementById(id).style.display = 'block';
-    }
-    function closeModal(id) {
-        document.getElementById(id).style.display = 'none';
-    }
-    function limpiarModales() {
-    // Remover todos los backdrops
-    document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
-    
-    // Remover clases y estilos del body
-    document.body.classList.remove('modal-open');
-    document.body.style.removeProperty('overflow');
-    document.body.style.removeProperty('padding-right');
-    
-    // Cerrar modales abiertos
-    document.querySelectorAll('.modal.show').forEach(modal => {
-        const bootstrapModal = bootstrap.Modal.getInstance(modal);
-        if (bootstrapModal) {
-            bootstrapModal.hide();
+    // Modal Management Functions
+    const modalManager = {
+        open: function(id) {
+            document.getElementById(id).style.display = 'block';
+        },
+        close: function(id) {
+            document.getElementById(id).style.display = 'none';
+        },
+        cleanup: function() {
+            // Remove backdrops
+            document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
+            
+            // Reset body styles
+            document.body.classList.remove('modal-open');
+            document.body.style.removeProperty('overflow');
+            document.body.style.removeProperty('padding-right');
+            
+            // Close active modals
+            document.querySelectorAll('.modal.show').forEach(modal => {
+                const bootstrapModal = bootstrap.Modal.getInstance(modal);
+                if (bootstrapModal) bootstrapModal.hide();
+                modal.remove();
+            });
         }
-        modal.remove();
-    });
-}
-    // Cerrar modal si el usuario hace click fuera del contenido
-    window.onclick = function(event) {
-        const modales = ['modalInventario','modalFlota'];
-        modales.forEach(id => {
-            const modal = document.getElementById(id);
-            if(event.target === modal) {
-                modal.style.display = 'none';
-            }
-        });
     };
+
+    // Modal event handlers
+    const openModal = modalManager.open;
+    const closeModal = modalManager.close;
+    const limpiarModales = modalManager.cleanup;
+
+    // Click outside modal handler
+    window.addEventListener('click', (event) => {
+        ['modalInventario', 'modalFlota'].forEach(id => {
+            const modal = document.getElementById(id);
+            if (event.target === modal) modal.style.display = 'none';
+        });
+    });
 
     // ---------- Funciones para cargar datos ---------
     async function fetchInventario() {
