@@ -3836,12 +3836,21 @@ function searchInventario() {
                 }
             }
 
-            if (distribucionMultiple.length > 0) {
+            // Filtrar solo unidades con datos completos
+            const unidadesValidas = distribucionMultiple.filter(unidad => 
+                unidad.llantasEstimadas > 0 && 
+                unidad.volumenAsignado > 0 && 
+                unidad.pesoAsignado > 0 && 
+                !isNaN(unidad.eficiencia) &&
+                unidad.eficiencia > 0
+            );
+
+            if (unidadesValidas.length > 0) {
                 // Mostrar sugerencia de múltiples unidades
                 contenedorDetalles.innerHTML = `
                     <div class="alert alert-info">
                         <h5><i class="bi bi-info-circle"></i> Sugerencia de Distribución Múltiple</h5>
-                        <p>La carga se puede distribuir en ${distribucionMultiple.length} unidades:</p>
+                        <p>La carga se puede distribuir en ${unidadesValidas.length} unidades:</p>
                         <div class="table-responsive">
                             <table class="table table-bordered">
                                 <thead>
@@ -3852,10 +3861,11 @@ function searchInventario() {
                                         <th>Volumen</th>
                                         <th>Peso</th>
                                         <th>Eficiencia</th>
+                                        <th>Acciones</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    ${distribucionMultiple.map(unidad => `
+                                    ${unidadesValidas.map(unidad => `
                                         <tr>
                                             <td>${unidad.unidad}</td>
                                             <td>${unidad.economico}</td>
@@ -3863,6 +3873,9 @@ function searchInventario() {
                                             <td>${unidad.volumenAsignado.toFixed(2)} m³</td>
                                             <td>${unidad.pesoAsignado.toFixed(2)} kg</td>
                                             <td>${unidad.eficiencia.toFixed(1)}%</td>
+                                            <td>
+                                                <button class="btn btn-sm btn-warning" onclick="apartarCarga('${unidad.economico}')">apartar</button>
+                                            </td>
                                         </tr>
                                     `).join('')}
                                 </tbody>
@@ -3983,6 +3996,7 @@ function searchInventario() {
                                 <th>Uso Volumen</th>
                                 <th>Uso Peso</th>
                                 <th>Eficiencia</th>
+                                <th>Acciones</th>
                             </tr>
                         </thead>
                         <tbody>`;
@@ -4028,6 +4042,19 @@ function searchInventario() {
                                     ${camion.utilizacionPromedio.toFixed(1)}%
                                 </div>
                             </div>
+                        </td>
+                        <td>
+                            <button class="btn btn-sm btn-warning" onclick="apartarUnidad(
+                                {
+                                    'unidad': '${camion.unidad}',
+                                    'economico': '${camion.economico}',
+                                    'nombre': '${camion.unidad}',
+                                    'codigo': '${camion.economico}'
+                                }, 
+                                ${JSON.stringify(llantasAgregadas)},
+                                ${camion.volumenNum}, 
+                                ${camion.capacidadCargaNum}
+                            )">Apartar</button>
                         </td>
                     </tr>`;
             });
