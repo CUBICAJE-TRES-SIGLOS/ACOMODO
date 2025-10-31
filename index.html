@@ -3684,6 +3684,20 @@ function searchInventario() {
             let pesoRestante = pesoTotal;
             let llantasRestantes = cantidadTotalLlantas;
             
+            // Ordenar unidades disponibles por capacidad de volumen (de mayor a menor)
+            unidadesOrdenadas.sort((a, b) => {
+                const volumenA = parseFloat(a.volumen || a.capacidadVolumen || '0');
+                const volumenB = parseFloat(b.volumen || b.capacidadVolumen || '0');
+                return volumenB - volumenA;  // Orden descendente
+            });
+
+            console.log('Unidades ordenadas por capacidad:', 
+                unidadesOrdenadas.map(u => ({
+                    economico: u.economico,
+                    volumen: parseFloat(u.volumen || u.capacidadVolumen || '0').toFixed(2) + ' m³'
+                }))
+            );
+            
             // Constantes para cálculos
             const PESO_POR_LLANTA = 7.80; // kg por llanta
             console.log('Iniciando distribución:', {
