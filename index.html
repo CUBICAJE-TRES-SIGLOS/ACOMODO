@@ -983,12 +983,17 @@ document.addEventListener('DOMContentLoaded', function() {
         <h3>Sugerencia de Unidad</h3>
         
         <!-- Botones de modo -->
-        <div class="btn-group mb-3" role="group" aria-label="Modo de sugerencia">
-            <button type="button" class="btn btn-primary active" id="btnModoCalculadora" onclick="cambiarModoSugerencia('calculadora')">
-                Calculadora
-            </button>
-            <button type="button" class="btn btn-primary" id="btnModoBusqueda" onclick="cambiarModoSugerencia('busqueda')">
-                Búsqueda de Bloques
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <div class="btn-group" role="group" aria-label="Modo de sugerencia">
+                <button type="button" class="btn btn-primary active" id="btnModoCalculadora" onclick="cambiarModoSugerencia('calculadora')">
+                    Calculadora
+                </button>
+                <button type="button" class="btn btn-primary" id="btnModoBusqueda" onclick="cambiarModoSugerencia('busqueda')">
+                    Búsqueda de Bloques
+                </button>
+            </div>
+            <button type="button" class="btn btn-danger" onclick="limpiarBloquesAcumulados()">
+                <i class="bi bi-trash"></i> Limpiar Bloques
             </button>
         </div>
 
@@ -6934,10 +6939,51 @@ function seleccionarBloque(idx) {
         seccionUnidadSugerida.style.minHeight = '200px';
     }
     
+    // Variables globales para acumular bloques
+    if (!window.bloquesAcumulados) {
+        window.bloquesAcumulados = {
+            llantas: [],
+            volumenTotal: 0,
+            pesoTotal: 0,
+            totalLlantas: 0
+        };
+    }
+
     let volumenTotalBloque = 0;
     let pesoTotalBloque = 0;
     let totalLlantas = 0;
     
+        function limpiarBloquesAcumulados() {
+        // Reiniciar los valores acumulados
+        window.bloquesAcumulados = {
+            llantas: [],
+            volumenTotal: 0,
+            pesoTotal: 0,
+            totalLlantas: 0
+        };
+
+        // Limpiar la tabla de sugerencias
+        const tablaLlantas = document.getElementById('tablaLlantasSeleccionadas').querySelector('tbody');
+        if (tablaLlantas) {
+            tablaLlantas.innerHTML = '';
+        }
+
+        // Limpiar las unidades sugeridas
+        const tablaSugerencias = document.getElementById('tablaUnidadesSugeridasBusqueda');
+        if (tablaSugerencias) {
+            tablaSugerencias.innerHTML = '';
+        }
+
+        // Ocultar el resumen de carga
+        const totalLlantasDiv = document.getElementById('totalLlantas');
+        if (totalLlantasDiv) {
+            totalLlantasDiv.style.display = 'none';
+        }
+
+        // Mostrar mensaje al usuario
+        mostrarAlerta('Bloques limpiados exitosamente', 'success');
+    }
+
     // Calcular totales para cada llanta
     const llantas = bloque.datos.map(item => {
         const cantidad = parseInt(item.Cantidad) || 0;
@@ -6975,10 +7021,16 @@ function seleccionarBloque(idx) {
         };
     });
     
-    // Calcular totales generales
-    const totalVolumen = llantas.reduce((sum, item) => sum + item.volumenTotal, 0);
-    const totalPeso = llantas.reduce((sum, item) => sum + item.pesoTotal, 0);
-    const cantidadTotal = llantas.reduce((sum, item) => sum + item.cantidad, 0);
+    // Acumular los datos en las variables globales
+    window.bloquesAcumulados.llantas = window.bloquesAcumulados.llantas.concat(llantas);
+    window.bloquesAcumulados.volumenTotal += volumenTotalBloque;
+    window.bloquesAcumulados.pesoTotal += pesoTotalBloque;
+    window.bloquesAcumulados.totalLlantas += totalLlantas;
+
+    // Calcular totales generales (ahora usando los acumulados)
+    const totalVolumen = window.bloquesAcumulados.volumenTotal;
+    const totalPeso = window.bloquesAcumulados.pesoTotal;
+    const cantidadTotal = window.bloquesAcumulados.totalLlantas;
     
     // Actualizar tabla de llantas seleccionadas
     const tablaLlantas = document.getElementById('tablaLlantasSeleccionadas').querySelector('tbody');
