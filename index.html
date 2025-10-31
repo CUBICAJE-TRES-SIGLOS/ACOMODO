@@ -3874,7 +3874,7 @@ function searchInventario() {
                                             <td>${unidad.pesoAsignado.toFixed(2)} kg</td>
                                             <td>${unidad.eficiencia.toFixed(1)}%</td>
                                             <td>
-                                                <button class="btn btn-sm btn-warning" onclick="apartarCarga('${unidad.economico}')">apartar</button>
+                                                <button class="btn btn-sm btn-warning" onclick="apartarUnidad('${unidad.economico}', llantasAgregadas, ${unidad.volumenAsignado}, ${unidad.pesoAsignado})">Apartar</button>
                                             </td>
                                         </tr>
                                     `).join('')}
@@ -4044,7 +4044,9 @@ function searchInventario() {
                             </div>
                         </td>
                         <td>
-                            <button class="btn btn-sm btn-warning">Apartar</button>
+                            <button class="btn btn-sm btn-warning" onclick="apartarUnidad('${camion.economico}', llantasAgregadas, ${volumenTotal}, ${pesoTotal})">
+                                <i class="bi bi-box-arrow-right"></i> Apartar
+                            </button>
                         </td>
                     </tr>`;
             });
