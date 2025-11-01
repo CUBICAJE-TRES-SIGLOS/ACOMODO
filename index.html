@@ -48,6 +48,29 @@
         min-width: 400px; /* Ancho mínimo para los botones */
         white-space: nowrap; /* Evita que los botones se envuelvan */
    }
+   
+   /* Estilos para la tabla de unidades sugeridas */
+   #acordeonUnidadesSugeridas .table-responsive {
+        min-width: 800px; /* Ancho mínimo más amplio */
+   }
+   #acordeonUnidadesSugeridas table th,
+   #acordeonUnidadesSugeridas table td {
+        min-width: 120px; /* Ancho mínimo para cada columna */
+        padding: 12px 15px; /* Más espacio interno */
+   }
+   #acordeonUnidadesSugeridas {
+        width: 100%; /* Asegura que use todo el ancho disponible */
+   }
+   #acordeonUnidadesSugeridas .accordion-button {
+        width: 800px; /* Mismo ancho que la tabla */
+        max-width: none; /* Elimina el límite de ancho máximo */
+   }
+   #acordeonUnidadesSugeridas .accordion-header {
+        width: 800px; /* Mismo ancho que la tabla */
+   }
+   #acordeonUnidadesSugeridas .accordion-item {
+        width: 800px; /* Mismo ancho que la tabla */
+   }
 
        #tablaPedidosActuales .btn {
            margin: 2px; /* Espacio entre botones */
@@ -416,7 +439,6 @@
                     </div>
                 </div>
             </div>
-            
             <div class="col-md-6">
                 <div class="card mb-3">
                     <div class="card-header bg-success text-white">
@@ -432,7 +454,6 @@
                 </div>
             </div>
         </div>
-
         <div class="row">
             <div class="col-md-6">
                 <div class="card mb-3">
@@ -448,7 +469,6 @@
                     </div>
                 </div>
             </div>
-            
             <div class="col-md-6">
                 <div class="card mb-3">
                     <div class="card-header bg-warning">
@@ -465,7 +485,6 @@
                 </div>
             </div>
         </div>
-
         <div class="alert alert-info mt-3">
             <h5>💡 Tips rápidos:</h5>
             <ul>
@@ -480,7 +499,6 @@
         </div>
     </div>
 </div>
-
 <style>
 /* Estilos para el modal de instrucciones */
 .modal {
@@ -578,7 +596,6 @@ async function inicializarAplicacion() {
         console.error('Error al inicializar la aplicación:', error);
     }
 }
-
 // App Initialization
 document.addEventListener('DOMContentLoaded', function() {
     // Initialize app core
@@ -699,7 +716,6 @@ document.addEventListener('DOMContentLoaded', function() {
         </div>
     </div>
 </div>
-
 <section>
 
     <!-- Inventario -->
@@ -728,7 +744,6 @@ document.addEventListener('DOMContentLoaded', function() {
             <tbody></tbody>
         </table>
     </div>
-
     <!-- Modal Inventario -->
     <div id="modalInventario" class="modal">
     <div id="loadingMessage" style="display:none;">Calculando volúmenes...</div>
@@ -782,7 +797,6 @@ document.addEventListener('DOMContentLoaded', function() {
         </form>
     </div>
 </div>
-
     <!-- Flota -->
     <div id="flota" class="tabcontent">
         <div class="search-and-button">
@@ -790,7 +804,6 @@ document.addEventListener('DOMContentLoaded', function() {
             <button class="primary" onclick="openModal('modalFlota')">Agregar Camión</button>
             <button class="primary" onclick="fetchFlota()">Actualizar flota</button>
         </div>
-
         <table id="tablaFlota">
             <thead>
                 <tr>
@@ -807,7 +820,6 @@ document.addEventListener('DOMContentLoaded', function() {
             <tbody></tbody>
         </table>
     </div>
-
     <!-- Modal Flota -->
     <div id="modalFlota" class="modal">
         <div class="modal-content">
@@ -843,8 +855,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 <div id="msgFlota" class="msg"></div>
             </form>      
         </div>
-    </div>
-          
+    </div>    
     <!-- Pedidos -->    
     <div id="pedidos" class="tabcontent" style="max-width: 1000px;">
         <div>
@@ -857,7 +868,6 @@ document.addEventListener('DOMContentLoaded', function() {
         <button class="btn btn-info" onclick="toggleVerificacionRapida()">
             <i class="bi bi-calculator"></i> Mostrar Calculadora Rápida
         </button>
-    
         <div id="verificacionRapidaPanel" style="display:none;">
             <div class="card mb-3 mt-3">
                <div class="card-header">
@@ -938,7 +948,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 <button class="primary" onclick="agregarPedido()">Agregar al pedido</button>
             </div>
         </div>
-
         <!-- Campo para agregar bloque por folio -->
         <div style="margin-bottom: 10px;">
              <label for="inputFolioFacturaPedido"><b>Folio de Factura:</b></label>
@@ -959,7 +968,6 @@ document.addEventListener('DOMContentLoaded', function() {
         </div>
         <button class="primary" onclick="aceptarPedido()" style="margin-top: 10px;">Aceptar Pedido</button>
         </div>
-
         <h3>Pedidos actuales del camión</h3>
         <table id="tablaPedidosActuales" style="max-width:700px;">
             <thead>
@@ -977,7 +985,6 @@ document.addEventListener('DOMContentLoaded', function() {
             <tbody></tbody>
         </table>
     </div>
-
     <!-- Sugerencia de Unidad -->
     <div id="sugerencia-unidad" class="tabcontent" style="max-width: 1000px;">
         <h3>Sugerencia de Unidad</h3>
@@ -1023,7 +1030,6 @@ document.addEventListener('DOMContentLoaded', function() {
                     </div>
                 </div>
             </div>
-
             <div class="card mb-3">
             <div class="card-header d-flex justify-content-between align-items-center">
                 <h5 class="mb-0">Agregar Llantas al Cálculo</h5>
@@ -1054,7 +1060,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 </div>
             </div>
         </div>
-
         <div class="card mb-3">
             <div class="card-header">
                 <h5>Llantas Agregadas</h5>
@@ -1083,44 +1088,46 @@ document.addEventListener('DOMContentLoaded', function() {
             </div>
         </div>
     </div>
-
     <!-- Modo Búsqueda de Bloques -->
     <div id="modoBusqueda" style="display: none;">
         <!-- Barra de búsqueda y tabla de llantas -->
         <div class="row g-3 mb-3">
-            <!-- Buscador -->
-            <div class="col-lg-5">
-                <div class="card">
-                    <div class="card-body p-2">
-                        <div class="input-group">
-                            <input type="text" 
-                                   class="form-control" 
-                                   id="busquedaBloque" 
-                                   placeholder="Buscar bloques..." 
-                                   oninput="buscarBloques()"
-                                   autocomplete="off">
-                            <button class="btn btn-outline-danger" onclick="limpiarBusquedaBloques()">
-                                <i class="bi bi-trash"></i>
-                            </button>
+            <div class="row">
+                <!-- Buscador -->
+                <div class="col-lg-6">
+                    <div class="card">
+                        <div class="card-body p-2">
+                            <div class="input-group">
+                                <input type="text" 
+                                       class="form-control" 
+                                       id="busquedaBloque" 
+                                       placeholder="Buscar bloques..." 
+                                       oninput="buscarBloques()"
+                                       autocomplete="off">
+                                <button class="btn btn-outline-danger" onclick="limpiarBusquedaBloques()">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
-
                 <!-- Bloques Encontrados -->
-                <div class="card mb-3">
-                    <div class="card-header bg-secondary text-white py-2">
-                        <h6 class="mb-0">Bloques Encontrados</h6>
-                    </div>
-                    <div class="card-body p-0" style="max-height: 300px; overflow-y: auto;">
-                        <div id="resultadosBusqueda" class="list-group list-group-flush"></div>
+                <div class="col-lg-6">
+                    <div class="card">
+                        <div class="card-header bg-secondary text-white py-2">
+                            <h6 class="mb-0">Bloques Encontrados</h6>
+                        </div>
+                        <div class="card-body p-0" style="max-height: 300px; overflow-y: auto;">
+                            <div id="resultadosBusqueda" class="list-group list-group-flush"></div>
+                        </div>
                     </div>
                 </div>
-                
-                <!-- Unidades Sugeridas -->
-                <div class="accordion mb-5" id="acordeonUnidadesSugeridas">
+            </div>
+            <!-- Unidades Sugeridas -->
+                <div class="accordion mb-5" id="acordeonUnidadesSugeridas" style="overflow-x: auto; min-width: 900px;">
                     <div class="accordion-item">
-                        <h2 class="accordion-header">
-                            <button class="accordion-button bg-info text-white" type="button" data-bs-toggle="collapse" data-bs-target="#collapseUnidades">
+                        <h2 class="accordion-header" style="width: 100%;">
+                            <button class="accordion-button bg-info text-white w-100" type="button" data-bs-toggle="collapse" data-bs-target="#collapseUnidades">
                                 <i class="bi bi-truck me-2"></i>Unidades Sugeridas
                             </button>
                         </h2>
@@ -1134,7 +1141,9 @@ document.addEventListener('DOMContentLoaded', function() {
                                                 <th>Económico</th>
                                                 <th>Cap. Vol</th>
                                                 <th>Cap. Peso</th>
-                                                <th>Eficiencia</th>             
+                                                <th>Espacio Usado</th>
+                                                <th>Uso de peso</th>
+                                                <th>Eficiencia</th>          
                                             </tr>
                                         </thead>
                                         <tbody id="tablaUnidadesSugeridasBusqueda"></tbody>
@@ -1144,14 +1153,8 @@ document.addEventListener('DOMContentLoaded', function() {
                         </div>
                     </div>
                 </div>
-            </div>
-
-              
-
-            <!-- Panel Derecho: Llantas en el Bloque -->
-            <div class="col-lg-7 ms-auto">
-                <!-- Llantas en el Bloque -->
-                <div class="accordion mb-3" id="acordeonLlantas">
+            </div>   
+             <!-- Panel Derecho: Llantas en el Bloque -->
                     <div class="accordion-item shadow-sm">
                         <h2 class="accordion-header">
                             <button class="accordion-button bg-success text-white py-3" type="button" data-bs-toggle="collapse" data-bs-target="#collapseLlantas">
@@ -1173,53 +1176,14 @@ document.addEventListener('DOMContentLoaded', function() {
                                                 <th style="width: 20%; padding: 1rem;" class="text-center">Vol. Total</th>
                                                 <th style="width: 20%; padding: 1rem;" class="text-center">Peso Total</th>
                                                 <th style="width: 10%; padding: 1rem;" class="text-center">Acciones</th>
-                                    </tr>
-                                </thead>
-                                <tbody></tbody>
-                            </table>
-                        </div>
+                                           </tr>
+                                      </thead>
+                                 <tbody></tbody>
+                             </table>
+                         </div>
                         <div id="totalLlantas" class="alert alert-info m-4" style="display: none;"></div>
                     </div>
                 </div>
-
-                <!-- Sección de Unidad Sugerida -->
-                <div id="seccionUnidadSugeridaPrincipal" class="card mb-3" style="display: none;">
-                    <div class="card-header bg-info text-white">
-                        <h5 class="mb-0">Unidad Sugerida</h5>
-                    </div>
-                    <div class="card-body">
-                        <div class="table-responsive">
-                            <table class="table table-bordered mb-0">
-                                <thead class="bg-light">
-                                    <tr>
-                                        <th>Unidad</th>
-                                        <th>Económico</th>
-                                        <th>Cap. Volumen</th>
-                                        <th>Cap. Peso</th>
-                                        <th style="width: 120px">Uso Volumen</th>
-                                        <th style="width: 120px">Uso Peso</th>
-                                        <th style="width: 120px">Eficiencia</th>
-                                        <th style="width: 150px">Acciones</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="tablaUnidadesPrincipal">
-                                    <!-- Las unidades sugeridas se insertarán aquí -->
-                                </tbody>
-                            </table>
-                        </div>
-                        <div id="unidadSugeridaDetalles" class="mt-3"></div>
-                    </div>
-                </div>
-            </div>
-        </div>
-                </table>
-                <div id="totalLlantas" class="alert alert-info mt-3" style="display: none;"></div>
-            </div>
-        </div>
-    </div>
-        </div>
-    </div>
-
     <!-- Pedidos Confirmados -->
     <div id="pedidos-confirmados" class="tabcontent" style="max-width: 1200px;">
         <h3>Pedidos Confirmados</h3>
@@ -1263,7 +1227,6 @@ document.addEventListener('DOMContentLoaded', function() {
                        </button>
                    </li>
                </ul>
-
                 <!-- Contenido de las pestañas -->
                 <div class="tab-content">
                     <!-- Pestaña 1: Sistema actual -->
@@ -1316,7 +1279,6 @@ document.addEventListener('DOMContentLoaded', function() {
                             </div>
                         </div>
                     </div>
-
                     <!-- Pestaña 2: Nuevo sistema -->
                     <!-- Pestaña 2: Facturas Especiales -->
                     <div class="tab-pane fade" id="facturasEspeciales">
